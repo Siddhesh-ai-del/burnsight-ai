@@ -49,6 +49,9 @@ SEVERITY_LEVELS = ("NORMAL", "BORDERLINE", "DEFECTIVE")
 
 DEFAULT_ALPHA = 10.0
 DEFAULT_BETA = 1.0
+# Version stamped into every audit record — bump when the model family or
+# the feature contract in burnsight/forecast.py changes.
+MODEL_VERSION = "burnsight-forecast-1.0"
 TRIAGE_COLORS = ("GREEN", "YELLOW", "RED")
 
 # Near-limit guard: escalate when >=80% of the spec window toward a limit is

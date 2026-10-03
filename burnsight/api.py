@@ -15,10 +15,11 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
-from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from burnsight.audit import certificate_pdf, load_audit
 from burnsight.config import BATCH_COLUMNS, DEFAULT_ALPHA, DEFAULT_BETA
 from burnsight.ingest import parse_batch
 from burnsight.pipeline import run_triage
@@ -157,6 +158,39 @@ async def triage_endpoint(
     """
     records = await _validated_records(request)
     return run_triage(records, alpha=alpha)
+
+
+@app.get("/api/audit/{audit_id}")
+async def get_audit(audit_id: str) -> dict[str, Any]:
+    """Machine-readable audit record for one analysis run (JSONL lookup)."""
+    record = load_audit(audit_id)
+    if record is None:
+        raise HTTPException(
+            404, _detail("AUDIT_NOT_FOUND", f"no audit record {audit_id!r}")
+        )
+    return record
+
+
+@app.get("/api/certificate/{audit_id}/{unit_id}")
+async def get_certificate(audit_id: str, unit_id: str) -> Response:
+    """PDF certificate for a flagged unit, rendered from the stored log."""
+    record = load_audit(audit_id)
+    if record is None:
+        raise HTTPException(
+            404, _detail("AUDIT_NOT_FOUND", f"no audit record {audit_id!r}")
+        )
+    try:
+        pdf = certificate_pdf(record, unit_id)
+    except ValueError as exc:
+        raise HTTPException(404, _detail("UNIT_NOT_CERTIFIED", str(exc))) from None
+    safe_id = "".join(c for c in unit_id if c.isalnum() or c in "-_")
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="certificate-{safe_id}.pdf"'
+        },
+    )
 
 
 app.mount("/static", StaticFiles(directory=str(_FRONTEND)), name="static")

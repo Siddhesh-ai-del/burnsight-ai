@@ -43,3 +43,6 @@ Thumbs.db
 # Local data artifacts (sample fixtures ARE committed; generated outputs are not)
 data/generated/
 *.parquet
+
+# Runtime audit log (append-only shipping artifact)
+data/audit/

@@ -61,7 +61,7 @@ Nothing else gets cut, because nothing else is in scope.
 |---|---|---|---|
 | Explainability | SHAP | permutation importance + reason codes | **AVAILABLE (shap 0.52)** — primary locked for MVP-6 |
 | Forecast model | XGBoost | sklearn `HistGradientBoostingRegressor` | **AVAILABLE (xgboost 3.4.1, CPU)** — primary locked for MVP-4; installed from cached wheel without the unused CUDA/nvidia-nccl dependency |
-| Certificate | ReportLab PDF | styled HTML certificate | **AVAILABLE (reportlab 5.0.1)** — probe complete; confirm format choice at MVP-8 start |
+| Certificate | ReportLab PDF | styled HTML certificate | **DECIDED at MVP-8 start: PDF via reportlab 5.0.1 (locked primary)** — HTML cut NOT taken; rendered and demoed |
 
 Decision rule (locked): if the probe says FAIL, or the package costs more time than it saves, the fallback above is used with no further discussion.
 
@@ -150,7 +150,7 @@ flagged, **0/92 normal units flagged**, defect z-scores 11.9–31.0 against a
   explanation.
 
 ### MVP-8 — Audit Export & Ship (≤90 min)
-- [ ] **MVP-8**: machine-readable JSON audit log (input digest, model/policy
+- [x] **MVP-8**: machine-readable JSON audit log (input digest, model/policy
   version, decision, explanation, timestamp) + downloadable certificate
   (ReportLab PDF if available, else styled HTML) + end-to-end smoke test
   (ingest → triage → explain → export) + honest README with real usage.
@@ -183,4 +183,23 @@ mode is ever registered, its channel's guard side flips in one place.
 | MVP-5 | complete | RED→GREEN, 139 tests, 99% coverage (triage 100%), 0 CRITICAL; HIGH (triage_batch 88 lines) = issue #4; honest 92/5/3 split achieved with spec-anchored thresholds (no tuning); A/B test proves α=10β flips uncertain units to Yellow |
 | MVP-6 | complete | RED→GREEN (2 in-cycle fixes: bg unit_id cast, shap (1,p) row convention), 155 tests, 99% coverage (explain 100%), 0 CRITICAL; HIGH (explain_batch 58 lines) = issue #5; SHAP top-ranked feature names planted driver for all 3 Reds, codes from config registry, reproducible via shap seed |
 | MVP-7 | complete | RED→GREEN (1 test rewrite: golden-data risks are all 0/1 → crafted intermediate-risk unit for the slider test), 167 tests, 99% coverage (api 100%, pipeline 100%), 0 CRITICAL; XSS via row.innerHTML unit_id = issue #6 (HIGH); Chart.js vendored (no CDN/build), static dashboard + /api/triage with real alpha recompute |
-| MVP-8 | pending | next — audit export; reportlab 5.0.1 locked, PDF-vs-HTML per cut list decided at ticket start |
+| MVP-8 | complete | RED→GREEN (first try, 0 in-cycle fixes), 182 tests, 99% coverage (audit 100%, api 100%, pipeline 100%, config 100%), 0 CRITICAL; findings: certificate_lines 57 lines = issue #7 (HIGH), JSONL lock/malformed-line = issue #8 (MED); **cut-list decision: certificate = ReportLab PDF (locked primary), HTML cut NOT taken**; honest README shipped with screenshots; 8/8 boxes ticked |
+
+## Post-MVP backlog (open GitHub issues)
+
+All review findings were logged, not fixed in-sprint (CRITICAL-only fix rule;
+0 CRITICAL was found at any ticket):
+
+| # | Severity | Finding |
+|---|---|---|
+| [#1](https://github.com/Siddhesh-ai-del/burnsight-ai/issues/1) | HIGH | `generate_batch` 62 lines |
+| [#2](https://github.com/Siddhesh-ai-del/burnsight-ai/issues/2) | MED | generator in-place mutation |
+| [#3](https://github.com/Siddhesh-ai-del/burnsight-ai/issues/3) | MEDIUM | upload body size cap |
+| [#4](https://github.com/Siddhesh-ai-del/burnsight-ai/issues/4) | HIGH | `triage_batch` 88 lines |
+| [#5](https://github.com/Siddhesh-ai-del/burnsight-ai/issues/5) | HIGH | `explain_batch` 58 lines |
+| [#6](https://github.com/Siddhesh-ai-del/burnsight-ai/issues/6) | HIGH | dashboard `row.innerHTML` interpolates unvalidated `unit_id` (XSS) |
+| [#7](https://github.com/Siddhesh-ai-del/burnsight-ai/issues/7) | HIGH | `certificate_lines` 57 lines |
+| [#8](https://github.com/Siddhesh-ai-del/burnsight-ai/issues/8) | MED | audit JSONL: no file lock on append; malformed line bricks export endpoints |
+
+The four length findings (#1/#4/#5/#7) are one refactor pass: extract the
+shared helpers each function repeats.

@@ -60,6 +60,17 @@ function render(data) {
     `${data.n_units} units · alpha = ${data.alpha} · p* = ` +
     `${data.escalation_threshold.toExponential(2)}`;
 
+  const links = $("auditLinks");
+  links.textContent = "";
+  const label = document.createElement("span");
+  label.textContent = `audit ${data.audit_id.slice(0, 8)} `;
+  const auditLink = document.createElement("a");
+  auditLink.href = `/api/audit/${data.audit_id}`;
+  auditLink.target = "_blank";
+  auditLink.rel = "noopener";
+  auditLink.textContent = "JSON ↗";
+  links.append(label, auditLink);
+
   const detailById = Object.fromEntries(data.flagged.map((d) => [d.unit_id, d]));
   const body = $("unitBody");
   body.innerHTML = "";
@@ -95,6 +106,9 @@ function showDetail(detail) {
   $("detailBadge").textContent = detail.color;
   $("detailCode").textContent =
     `${detail.reason_code} · ${detail.defect_mode}`;
+  const certificate = $("certLink");
+  certificate.href = `/api/certificate/${latest.audit_id}/${detail.unit_id}`;
+  certificate.hidden = false;
   $("detailWhy").textContent =
     `Reasons: ${detail.reasons || "—"} · driver: ${detail.worst_channel} · ` +
     `forecast 168 h = ${detail.predicted_168h.toFixed(2)}`;

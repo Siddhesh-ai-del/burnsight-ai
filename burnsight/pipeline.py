@@ -15,6 +15,7 @@ from functools import lru_cache
 
 import pandas as pd
 
+from burnsight.audit import append_audit, build_audit_record
 from burnsight.config import (
     DEFAULT_ALPHA,
     DEFAULT_BETA,
@@ -65,12 +66,16 @@ def run_triage(records: list[dict], alpha: float = DEFAULT_ALPHA) -> dict:
     explanation = explain_batch(model, batch, decisions)
     trajectory = forecast_trajectory(model, batch, hours=TRAJECTORY_HOURS)
     counts = decisions.color.value_counts()
+    record = build_audit_record(records, model, matrix, decisions, explanation)
+    append_audit(record)  # one JSONL line per analysis run (MVP-8)
     return {
         "n_units": int(len(decisions)),
         "counts": {color: int(counts.get(color, 0)) for color in TRIAGE_COLORS},
         "alpha": float(matrix.alpha),
         "beta": float(matrix.beta),
         "escalation_threshold": float(matrix.escalation_threshold),
+        "audit_id": record["audit_id"],
+        "input_digest": record["input_digest"],
         "units": _unit_rows(decisions),
         "flagged": _flagged_details(decisions, explanation, trajectory, batch),
     }

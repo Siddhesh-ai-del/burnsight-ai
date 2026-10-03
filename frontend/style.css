@@ -86,6 +86,10 @@ tr.unit.YELLOW td:first-child { color: var(--yellow); font-weight: 600; }
 .detail-head { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
 .detail-head code { background: #101625; color: var(--yellow);
                     padding: 3px 10px; border-radius: 6px; font-size: 13px; }
+.links a, .cert { color: var(--accent); text-decoration: none; font-size: 13.5px; }
+.links a:hover, .cert:hover { text-decoration: underline; }
+.cert { margin-left: auto; color: var(--green); font-weight: 600; }
+.cert[hidden] { display: none !important; }
 .why { color: var(--muted); margin: 8px 0 0; }
 .chart-wrap { background: #101625; border: 1px solid var(--line);
               border-radius: 8px; padding: 10px; }
