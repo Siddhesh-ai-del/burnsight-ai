@@ -1,0 +1,35 @@
+[project]
+name = "burnsight"
+version = "0.0.1"
+description = "Early burn-in telemetry screening: population outliers, 168h forecasting, asymmetric risk triage"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.14"
+dependencies = [
+    "pandas",
+    "numpy",
+    "scikit-learn",
+    "fastapi",
+    "uvicorn",
+    "pydantic",
+    "python-multipart",
+    "jinja2",
+]
+
+[project.optional-dependencies]
+explain = ["shap"]
+forecast = ["xgboost"]
+certificate = ["reportlab"]
+test = ["pytest", "httpx", "pytest-cov"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["burnsight"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+pythonpath = ["."]

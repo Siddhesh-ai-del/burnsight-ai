@@ -1,0 +1,163 @@
+# BurnSight — One-Day MVP Sprint Plan
+
+**Goal:** a working, demoable MVP of ISRO SIH 2026 PS 26170 (AI-Driven Anomaly
+Detection in Component Burn-In & Screening) in one non-stop day.
+**Rule of the day: done beats fancy.**
+
+**Repo:** https://github.com/Siddhesh-ai-del/burnsight-ai
+
+## The loop (per ticket)
+
+```
+┌── SPRINT START — set timer 90 min ──────────────┐
+│ 1. Pick ONE ticket (MVP-n) — the only one       │
+│ 2. /tdd <ticket description>                    │
+│    → RED test first → GREEN code                │
+│ 3. It works? /code-review  (fix CRITICAL only)  │
+│ 4. ✅ DEMO IT — to a human or to camera.         │
+│    Tick the box. (This is your dopamine shot.)  │
+│ 5. /checkpoint   (your future self thanks you)  │
+├── TIMER OFF — stand up, water, 5 min ───────────┤
+│ 6. Next ticket? → loop again                     │
+└─────────────────────────────────────────────────┘
+```
+
+- One ticket in flight at a time. Strictly sequential.
+- `/code-review`: fix CRITICAL only; log HIGH/MED as GitHub issues.
+- DEMO = show a human or record the camera. Then tick the box.
+- `/checkpoint` at every ticket boundary: commit + push + record state.
+
+## Scope (locked)
+
+**In scope:** synthetic Arrhenius-based telemetry generator; CSV/JSON ingestion
+API; MAD + IsolationForest population screening; 168h forecast with Arrhenius
+normalization; Green/Yellow/Red asymmetric triage (α=10β); SHAP (or fallback)
+explanations + physics reason codes; FastAPI + static HTML/Chart.js dashboard;
+JSON audit log + downloadable certificate.
+
+**Out of scope (do not build, no matter how tempting):** thermal-IR fusion,
+PINN training, PDF cryptographic signing, NASA dataset download, hardware
+integration, auth/multi-tenancy, distributed infrastructure.
+
+## Pre-agreed cut list (only if a ticket overruns)
+
+| Pressure | Cut to |
+|---|---|
+| SHAP unavailable or too slow | permutation importance + rule-based reason codes |
+| XGBoost unavailable | `sklearn.ensemble.HistGradientBoostingRegressor` |
+| ReportLab unavailable | styled HTML certificate |
+| Dashboard time overrun | table + badges only; chart next ticket |
+
+Nothing else gets cut, because nothing else is in scope.
+
+## Dependency decisions (recorded at Phase 0)
+
+**Core (all REQUIRED for every ticket): ALL OK on Python 3.14.7**
+`pandas 3.0.6, numpy 2.5.3, scikit-learn 1.9.1, fastapi 0.142.2, uvicorn, pydantic 2.13.5, pytest 9.1.1, httpx, python-multipart, jinja2, pytest-cov` — no blocker, no fallback needed.
+
+**Optional probes (decided at Phase 0, applied consistently — not re-litigated mid-sprint):**
+
+| Capability | Primary | Fallback (LOCKED) | Probe result |
+|---|---|---|---|
+| Explainability | SHAP | permutation importance + reason codes | probe in flight (shap 0.52 + llvmlite wheels downloaded) — finalize at MVP-6 start |
+| Forecast model | XGBoost | sklearn `HistGradientBoostingRegressor` | probe in flight — finalize at MVP-4 start |
+| Certificate | ReportLab PDF | styled HTML certificate | probe in flight — finalize at MVP-8 start |
+
+Decision rule (locked): if the probe says FAIL, or the package costs more time than it saves, the fallback above is used with no further discussion.
+
+---
+
+## Tickets (8 × ≤90 min)
+
+### MVP-1 — Synthetic Telemetry Generator (≤75 min)
+- [x] **MVP-1**: deterministic batch generator producing component telemetry at
+  0h/24h/96h with 168h terminal labels; Arrhenius rate law drives drift;
+  three planted defect modes (gate degradation, RDS(on) drift, leakage);
+  fixed column schema; seeded RNG reproducibility.
+- **TDD targets:** schema invariants; same seed → identical batch; drift rate
+  scales with Arrhenius factor; planted defects labeled and detectable by
+  simple z-score sanity check.
+- **DEMO:** print a 100-component batch showing 3 planted defective units.
+
+### MVP-2 — CSV/JSON Batch Ingestion API (≤75 min)
+- [ ] **MVP-2**: `POST /api/batch` accepts CSV and JSON payloads, pydantic
+  schema validation, rejects malformed rows with machine-readable errors;
+  golden sample fixtures under `data/samples/`.
+- **TDD targets:** valid CSV → 200 + normalized records; valid JSON → 200;
+  missing column → 422 with field name; out-of-range value → 422; empty file →
+  400; round-trip equality with generator output.
+- **DEMO:** `curl` a CSV file in, get validated JSON back.
+
+### MVP-3 — Population Outlier Detector (≤90 min)
+- [ ] **MVP-3**: MAD z-score screening + IsolationForest at T=0h →
+  `out_of_family` flag per component; batch-level summary counts.
+- **TDD targets:** planted outliers flagged; normals not flagged (no false
+  alarms on clean population); deterministic given seed; MAD handles zero-
+  variance channel without divide-by-zero.
+- **DEMO:** 3 planted units flagged out of 100, 97 clean.
+
+### MVP-4 — 168h Degradation Predictor (≤90 min)
+- [ ] **MVP-4**: early-cycle features (0h/24h/96h levels, slopes, accelerations,
+  Arrhenius-normalized temperature) → regressor predicts 168h terminal values
+  for each channel; returns full 0→168h trajectory for plotting.
+- **TDD targets:** MAE below threshold on held-out synthetic batch; forecast is
+  a pure function of features (no leakage of labels); trajectory length and
+  time points fixed; prediction respects physical direction of drift for
+  planted defects.
+- **DEMO:** predict RED unit's 168h VCE vs its planted actual value.
+
+### MVP-5 — Asymmetric Risk Triage (≤75 min)
+- [ ] **MVP-5**: loss matrix (α=10β, configurable) + triage rules combining
+  outlier flag, forecast vs USL/LSL, forecast uncertainty → Green/Yellow/Red.
+- **TDD targets:** borderline/uncertain cases escalate to Yellow (never
+  silently Green); known-bad unit → Red; clean unit → Green; α/β change moves
+  the decision boundary in the expected direction; 100% coverage of loss-matrix
+  logic.
+- **DEMO:** full batch triages into a 92/5/3-style split; show one borderline
+  case escalating to Yellow.
+
+### MVP-6 — Explainability & Reason Codes (≤75 min)
+- [ ] **MVP-6**: per-flagged-component feature attribution (SHAP if installed,
+  else permutation importance) + physics-grounded reason codes
+  (e.g. `ERR_MOSFET_GATE_DEGRADE`) mapped to the defect mode; explanation
+  attached to every Yellow/Red decision.
+- **TDD targets:** explanation names the planted defect driver for Red units;
+  Green units get an empty/low-complexity explanation; reason codes are stable
+  strings from a fixed registry; attribution scores sum/normalize sensibly.
+- **DEMO:** "Explain Decision" on Red #34: driver + reason code.
+
+### MVP-7 — Interactive Dashboard (≤90 min)
+- [ ] **MVP-7**: FastAPI serves a static dashboard: upload CSV → batch table
+  with Green/Yellow/Red badges, trajectory chart (measured + forecast + spec
+  limits) via Chart.js, expandable explanation panel, triage threshold slider.
+- **TDD targets:** endpoints serve HTML/JS with correct content type; batch
+  results endpoint returns badge data; slider value affects triage server-side;
+  smoke test drives upload → results flow end-to-end via httpx.
+- **DEMO:** full browser click-through: upload → badges → expand Red → chart +
+  explanation.
+
+### MVP-8 — Audit Export & Ship (≤90 min)
+- [ ] **MVP-8**: machine-readable JSON audit log (input digest, model/policy
+  version, decision, explanation, timestamp) + downloadable certificate
+  (ReportLab PDF if available, else styled HTML) + end-to-end smoke test
+  (ingest → triage → explain → export) + honest README with real usage.
+- **TDD targets:** audit record contains all required fields; audit is
+  append-only JSONL; certificate renders for a Red unit with correct details;
+  e2e test covers the full pipeline in one call.
+- **DEMO:** run the full 90-second judge pitch end-to-end. Tick the last box.
+
+---
+
+## Progress log
+
+| Ticket | State | Notes |
+|---|---|---|
+| Phase 0 (repo + env) | complete | repo live, core deps verified, community profile green |
+| MVP-1 | complete | RED→GREEN, 44 tests, 100% coverage, 0 CRITICAL in review, issues #1 (HIGH) #2 (MED) logged |
+| MVP-2 | pending | next |
+| MVP-3 | pending | |
+| MVP-4 | pending | |
+| MVP-5 | pending | |
+| MVP-6 | pending | |
+| MVP-7 | pending | |
+| MVP-8 | pending | |
