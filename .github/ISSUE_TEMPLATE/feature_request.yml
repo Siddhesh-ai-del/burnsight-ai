@@ -1,0 +1,44 @@
+name: Feature request
+description: Propose a capability improvement
+title: "[feature] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What operational problem does this solve? Lead with the problem, not the implementation.
+      placeholder: QA reviewers cannot compare two batches side by side.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What you would like to happen.
+    validations:
+      required: true
+  - type: dropdown
+    id: principle
+    attributes:
+      label: Which principle does this advance?
+      options:
+        - Physics-grounded reasoning
+        - Asymmetric risk handling
+        - Explainability and auditability
+        - Software-only operation
+        - None of the above
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other approaches you evaluated and why they fall short.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched existing issues and did not find a duplicate.
+          required: true

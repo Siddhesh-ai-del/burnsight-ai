@@ -1,0 +1,45 @@
+# Environments
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+*.so
+
+# Test / coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.mypy_cache/
+.ruff_cache/
+
+# Local environment and secrets — never commit
+.env
+.env.*
+*.key
+*.pem
+*.p12
+secrets.*
+credentials.*
+*.token
+
+# Build / tooling
+node_modules/
+dist/
+build/
+*.log
+
+# Editors / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Local data artifacts (sample fixtures ARE committed; generated outputs are not)
+data/generated/
+*.parquet
