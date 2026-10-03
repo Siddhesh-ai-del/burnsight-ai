@@ -59,9 +59,9 @@ Nothing else gets cut, because nothing else is in scope.
 
 | Capability | Primary | Fallback (LOCKED) | Probe result |
 |---|---|---|---|
-| Explainability | SHAP | permutation importance + reason codes | probe in flight (shap 0.52 + llvmlite wheels downloaded) — finalize at MVP-6 start |
+| Explainability | SHAP | permutation importance + reason codes | **AVAILABLE (shap 0.52)** — primary locked for MVP-6 |
 | Forecast model | XGBoost | sklearn `HistGradientBoostingRegressor` | probe in flight — finalize at MVP-4 start |
-| Certificate | ReportLab PDF | styled HTML certificate | probe in flight — finalize at MVP-8 start |
+| Certificate | ReportLab PDF | styled HTML certificate | probe queued — finalize at MVP-8 start |
 
 Decision rule (locked): if the probe says FAIL, or the package costs more time than it saves, the fallback above is used with no further discussion.
 
@@ -80,7 +80,7 @@ Decision rule (locked): if the probe says FAIL, or the package costs more time t
 - **DEMO:** print a 100-component batch showing 3 planted defective units.
 
 ### MVP-2 — CSV/JSON Batch Ingestion API (≤75 min)
-- [ ] **MVP-2**: `POST /api/batch` accepts CSV and JSON payloads, pydantic
+- [x] **MVP-2**: `POST /api/batch` accepts CSV and JSON payloads, pydantic
   schema validation, rejects malformed rows with machine-readable errors;
   golden sample fixtures under `data/samples/`.
 - **TDD targets:** valid CSV → 200 + normalized records; valid JSON → 200;
@@ -154,7 +154,8 @@ Decision rule (locked): if the probe says FAIL, or the package costs more time t
 |---|---|---|
 | Phase 0 (repo + env) | complete | repo live, core deps verified, community profile green |
 | MVP-1 | complete | RED→GREEN, 44 tests, 100% coverage, 0 CRITICAL in review, issues #1 (HIGH) #2 (MED) logged |
-| MVP-2 | pending | next |
+| MVP-2 | complete | RED→GREEN, 80 tests, 99% coverage, 0 CRITICAL; MEDIUM (upload size cap) = issue #3; shap probe OK |
+| MVP-3 | pending | next — population outlier detector |
 | MVP-3 | pending | |
 | MVP-4 | pending | |
 | MVP-5 | pending | |

@@ -13,6 +13,7 @@ from __future__ import annotations
 DEVICE_TYPE = "POWER_MOSFET"
 SAMPLE_HOURS = (0, 24, 96, 168)
 EARLY_HOURS = (0, 24, 96)  # observations available before the 168h terminal state
+MIN_TEMP_C, MAX_TEMP_C = 125.0, 150.0  # MIL-STD-883 Method 1015 stress range
 
 # Canonical MOSFET screening parameters (MIL-STD-883 tolerance windows).
 PARAM_CHANNELS = ("rds_on_mohm", "igss_na", "vgsth_v")
