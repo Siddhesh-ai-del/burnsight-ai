@@ -42,6 +42,23 @@ DEFECT_MODES: dict[str, tuple[str, str]] = {
 
 SEVERITY_LEVELS = ("NORMAL", "BORDERLINE", "DEFECTIVE")
 
+# --- Triage policy (asymmetric loss matrix) ----------------------------------
+# Alpha = cost of missing a failing unit (FN), beta = cost of reviewing a
+# passing unit (FP). Project policy: a miss costs 10x a false alarm, which
+# biases every threshold toward escalating rather than silently passing.
+
+DEFAULT_ALPHA = 10.0
+DEFAULT_BETA = 1.0
+TRIAGE_COLORS = ("GREEN", "YELLOW", "RED")
+
+# Near-limit guard: escalate when >=80% of the spec window toward a limit is
+# consumed — the same borderline definition the generator plants by.
+NEAR_LIMIT_GUARD = 0.8
+
+# Red requires the forecast to clear a limit by 2 sigma of model error, so a
+# straddling (uncertain) forecast degrades to Yellow, never to a confident Red.
+RED_SIGMA = 2.0
+
 
 def reason_code(defect_mode: str) -> str | None:
     """Return the reason code for a planted defect mode, or None for NONE."""

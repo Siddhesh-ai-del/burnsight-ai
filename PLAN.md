@@ -120,7 +120,7 @@ flagged, **0/92 normal units flagged**, defect z-scores 11.9–31.0 against a
 - **DEMO:** predict RED unit's 168h VCE vs its planted actual value.
 
 ### MVP-5 — Asymmetric Risk Triage (≤75 min)
-- [ ] **MVP-5**: loss matrix (α=10β, configurable) + triage rules combining
+- [x] **MVP-5**: loss matrix (α=10β, configurable) + triage rules combining
   outlier flag, forecast vs USL/LSL, forecast uncertainty → Green/Yellow/Red.
 - **TDD targets:** borderline/uncertain cases escalate to Yellow (never
   silently Green); known-bad unit → Red; clean unit → Green; α/β change moves
@@ -161,6 +161,16 @@ flagged, **0/92 normal units flagged**, defect z-scores 11.9–31.0 against a
 
 ---
 
+**D2 — Triage guard measures USL headroom; Red checks both bounds (MVP-5).**
+All three registered defect modes approach their limit from inside and above
+(leakage ↑, RDS(on) ↑, Vth ↑), so the 80%-toward-limit guard scores headroom
+to the USL. Measuring proximity to the *nearest* limit instead would misfire:
+healthy leakage sits ~93% of its window above LSL=0 and would flag every
+normal unit. The Red rule still checks both USL and LSL (a unit confidently
+below spec is Red regardless of direction), and the statistical risk term is
+two-sided — only the proximity guard is failure-side. If a downward defect
+mode is ever registered, its channel's guard side flips in one place.
+
 ## Progress log
 
 | Ticket | State | Notes |
@@ -170,7 +180,7 @@ flagged, **0/92 normal units flagged**, defect z-scores 11.9–31.0 against a
 | MVP-2 | complete | RED→GREEN, 80 tests, 99% coverage, 0 CRITICAL; MEDIUM (upload size cap) = issue #3; shap probe OK |
 | MVP-3 | complete | RED→GREEN, 98 tests, 99% coverage (screen 100%), 0 CRITICAL, 0 new findings; decision D1 logged; demo: 8 flagged / 92 clean / 0 FP |
 | MVP-4 | complete | RED→GREEN (2 in-cycle bugs: feature naming, residual-learning fix), 113 tests, 99% coverage (forecast 100%), 0 CRITICAL, 0 new findings; held-out MAE 0.68/0.61/0.023 vs limits 3.0/3.0/0.12; probe complete: reportlab OK |
-| MVP-5 | pending | next — asymmetric risk triage (loss matrix α=10β) |
-| MVP-6 | pending | SHAP explanations (shap 0.52 locked) |
+| MVP-5 | complete | RED→GREEN, 139 tests, 99% coverage (triage 100%), 0 CRITICAL; HIGH (triage_batch 88 lines) = issue #4; honest 92/5/3 split achieved with spec-anchored thresholds (no tuning); A/B test proves α=10β flips uncertain units to Yellow |
+| MVP-6 | pending | next — SHAP explanations (shap 0.52 locked) |
 | MVP-7 | pending | dashboard |
 | MVP-8 | pending | audit export (reportlab 5.0.1 available) |

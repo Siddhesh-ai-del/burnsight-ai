@@ -74,6 +74,9 @@ class ForecastModel:
     models: dict[str, XGBRegressor]
     feature_columns: tuple[str, ...]
     n_units: int = field(default=0)
+    # Per-channel std of training residuals: the forecast confidence input
+    # consumed by triage (MVP-5) to widen escalation when the model is unsure.
+    error_std: dict[str, float] = field(default_factory=dict)
 
 
 def build_features(batch: pd.DataFrame) -> pd.DataFrame:
@@ -111,6 +114,7 @@ def train_forecast_model(train_batch: pd.DataFrame) -> ForecastModel:
     """
     features = build_features(train_batch)
     models: dict[str, XGBRegressor] = {}
+    error_std: dict[str, float] = {}
     for channel in PARAM_CHANNELS:
         residual = (
             train_batch[channel_column(channel, 168)]
@@ -119,10 +123,13 @@ def train_forecast_model(train_batch: pd.DataFrame) -> ForecastModel:
         regressor = XGBRegressor(**DEFAULT_XGB_PARAMS)
         regressor.fit(features, residual)
         models[channel] = regressor
+        fitted = regressor.predict(features)
+        error_std[channel] = float(np.std(residual - fitted, ddof=1))
     return ForecastModel(
         models=models,
         feature_columns=tuple(features.columns),
         n_units=len(train_batch),
+        error_std=error_std,
     )
 
 
