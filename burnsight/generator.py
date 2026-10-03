@@ -24,6 +24,8 @@ Ground truth
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 import numpy as np
 import pandas as pd
 
@@ -79,9 +81,15 @@ def arrhenius_rate(
     return np.exp((ea_ev / BOLTZMANN_EV) * (1.0 / ref_k - 1.0 / temp_k))
 
 
-def _progress_curve(acceleration: np.ndarray) -> np.ndarray:
-    """Damage fraction at each sample hour for every unit: (n_units, n_hours)."""
-    elapsed = np.asarray(SAMPLE_HOURS, dtype=float)
+def progress_curve(
+    acceleration: np.ndarray, hours: Sequence[float] = SAMPLE_HOURS
+) -> np.ndarray:
+    """Damage fraction at each hour for every unit: (n_units, n_hours).
+
+    ``min(t * AF / 168h, 1) ** 0.8`` — shared by the generator (synthesis)
+    and the forecaster (trajectory plotting) so one kinetics law is used.
+    """
+    elapsed = np.asarray(hours, dtype=float)
     effective = (
         np.asarray(acceleration, dtype=float)[:, None]
         * elapsed[None, :]
@@ -172,7 +180,7 @@ def generate_batch(
         * np.array([_NOISE_SD[ch] for ch in PARAM_CHANNELS])[:, None]
     )
     acceleration = arrhenius_rate(temp_c)
-    progress = _progress_curve(acceleration)[:, None, :]  # (n_units, 1, n_hours)
+    progress = progress_curve(acceleration)[:, None, :]  # (n_units, 1, n_hours)
     trajectories = baseline[:, :, None] + drift[:, :, None] * progress + noise
 
     data: dict[str, object] = {

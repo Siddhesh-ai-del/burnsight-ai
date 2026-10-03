@@ -60,8 +60,8 @@ Nothing else gets cut, because nothing else is in scope.
 | Capability | Primary | Fallback (LOCKED) | Probe result |
 |---|---|---|---|
 | Explainability | SHAP | permutation importance + reason codes | **AVAILABLE (shap 0.52)** — primary locked for MVP-6 |
-| Forecast model | XGBoost | sklearn `HistGradientBoostingRegressor` | probe in flight — finalize at MVP-4 start |
-| Certificate | ReportLab PDF | styled HTML certificate | probe queued — finalize at MVP-8 start |
+| Forecast model | XGBoost | sklearn `HistGradientBoostingRegressor` | **AVAILABLE (xgboost 3.4.1, CPU)** — primary locked for MVP-4; installed from cached wheel without the unused CUDA/nvidia-nccl dependency |
+| Certificate | ReportLab PDF | styled HTML certificate | **AVAILABLE (reportlab 5.0.1)** — probe complete; confirm format choice at MVP-8 start |
 
 Decision rule (locked): if the probe says FAIL, or the package costs more time than it saves, the fallback above is used with no further discussion.
 
@@ -110,7 +110,7 @@ flagged, **0/92 normal units flagged**, defect z-scores 11.9–31.0 against a
 - **DEMO:** 3 planted units flagged out of 100, 97 clean.
 
 ### MVP-4 — 168h Degradation Predictor (≤90 min)
-- [ ] **MVP-4**: early-cycle features (0h/24h/96h levels, slopes, accelerations,
+- [x] **MVP-4**: early-cycle features (0h/24h/96h levels, slopes, accelerations,
   Arrhenius-normalized temperature) → regressor predicts 168h terminal values
   for each channel; returns full 0→168h trajectory for plotting.
 - **TDD targets:** MAE below threshold on held-out synthetic batch; forecast is
@@ -169,10 +169,8 @@ flagged, **0/92 normal units flagged**, defect z-scores 11.9–31.0 against a
 | MVP-1 | complete | RED→GREEN, 44 tests, 100% coverage, 0 CRITICAL in review, issues #1 (HIGH) #2 (MED) logged |
 | MVP-2 | complete | RED→GREEN, 80 tests, 99% coverage, 0 CRITICAL; MEDIUM (upload size cap) = issue #3; shap probe OK |
 | MVP-3 | complete | RED→GREEN, 98 tests, 99% coverage (screen 100%), 0 CRITICAL, 0 new findings; decision D1 logged; demo: 8 flagged / 92 clean / 0 FP |
-| MVP-4 | pending | next — 168h degradation predictor; xgboost probe still in flight |
-| MVP-3 | pending | |
-| MVP-4 | pending | |
-| MVP-5 | pending | |
-| MVP-6 | pending | |
-| MVP-7 | pending | |
-| MVP-8 | pending | |
+| MVP-4 | complete | RED→GREEN (2 in-cycle bugs: feature naming, residual-learning fix), 113 tests, 99% coverage (forecast 100%), 0 CRITICAL, 0 new findings; held-out MAE 0.68/0.61/0.023 vs limits 3.0/3.0/0.12; probe complete: reportlab OK |
+| MVP-5 | pending | next — asymmetric risk triage (loss matrix α=10β) |
+| MVP-6 | pending | SHAP explanations (shap 0.52 locked) |
+| MVP-7 | pending | dashboard |
+| MVP-8 | pending | audit export (reportlab 5.0.1 available) |
