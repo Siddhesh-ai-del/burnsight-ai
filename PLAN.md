@@ -65,6 +65,19 @@ Nothing else gets cut, because nothing else is in scope.
 
 Decision rule (locked): if the probe says FAIL, or the package costs more time than it saves, the fallback above is used with no further discussion.
 
+## Decisions log
+
+**D1 — Stage-1 screening uses baseline + 0h→24h drift signals (MVP-3).**
+The spec's "MAD at T=0h" only measures lot-to-lot baseline spread: 0h is the
+pre-stress baseline, and every planted defect mode starts statistically normal
+there. This is proven by test, not asserted: `test_baseline_alone_cannot_see_planted_defects`
+shows baseline-only recall on planted defects is **0/3**. Stage 1 therefore
+flags `out_of_family = MAD(baseline) OR MAD(drift 0h→24h) OR IsolationForest`
+— the union, biased toward flagging (a false alarm costs a review; an escape
+costs a mission). Measured on the seed-42 lot: 3/3 defects + 5/5 borderlines
+flagged, **0/92 normal units flagged**, defect z-scores 11.9–31.0 against a
+4.0 threshold.
+
 ---
 
 ## Tickets (8 × ≤90 min)
@@ -89,7 +102,7 @@ Decision rule (locked): if the probe says FAIL, or the package costs more time t
 - **DEMO:** `curl` a CSV file in, get validated JSON back.
 
 ### MVP-3 — Population Outlier Detector (≤90 min)
-- [ ] **MVP-3**: MAD z-score screening + IsolationForest at T=0h →
+- [x] **MVP-3**: MAD z-score screening + IsolationForest at T=0h →
   `out_of_family` flag per component; batch-level summary counts.
 - **TDD targets:** planted outliers flagged; normals not flagged (no false
   alarms on clean population); deterministic given seed; MAD handles zero-
@@ -155,7 +168,8 @@ Decision rule (locked): if the probe says FAIL, or the package costs more time t
 | Phase 0 (repo + env) | complete | repo live, core deps verified, community profile green |
 | MVP-1 | complete | RED→GREEN, 44 tests, 100% coverage, 0 CRITICAL in review, issues #1 (HIGH) #2 (MED) logged |
 | MVP-2 | complete | RED→GREEN, 80 tests, 99% coverage, 0 CRITICAL; MEDIUM (upload size cap) = issue #3; shap probe OK |
-| MVP-3 | pending | next — population outlier detector |
+| MVP-3 | complete | RED→GREEN, 98 tests, 99% coverage (screen 100%), 0 CRITICAL, 0 new findings; decision D1 logged; demo: 8 flagged / 92 clean / 0 FP |
+| MVP-4 | pending | next — 168h degradation predictor; xgboost probe still in flight |
 | MVP-3 | pending | |
 | MVP-4 | pending | |
 | MVP-5 | pending | |

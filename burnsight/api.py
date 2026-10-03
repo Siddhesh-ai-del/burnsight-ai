@@ -13,10 +13,12 @@ from __future__ import annotations
 
 from typing import Any
 
+import pandas as pd
 from fastapi import FastAPI, HTTPException, Request
 
 from burnsight.config import BATCH_COLUMNS
 from burnsight.ingest import parse_batch
+from burnsight.screen import screen_population
 
 app = FastAPI(title="BurnSight", version="0.0.1")
 
@@ -74,8 +76,8 @@ def health() -> dict[str, str]:
     return {"status": "ok", "version": app.version}
 
 
-@app.post("/api/batch")
-async def ingest_batch(request: Request) -> dict[str, Any]:
+async def _validated_records(request: Request) -> list[dict]:
+    """Parse the request payload into validated records, or raise the HTTP error."""
     payload = await _payload_from_request(request)
     records, errors = parse_batch(payload)
     if errors:
@@ -90,9 +92,41 @@ async def ingest_batch(request: Request) -> dict[str, Any]:
                 "errors": errors,
             },
         )
+    return records
+
+
+@app.post("/api/batch")
+async def ingest_batch(request: Request) -> dict[str, Any]:
+    records = await _validated_records(request)
     return {
         "n_units": len(records),
         "columns": list(BATCH_COLUMNS),
         "labels_present": any("severity" in record for record in records),
         "units": records,
+    }
+
+
+@app.post("/api/screen")
+async def screen_batch(request: Request) -> dict[str, Any]:
+    """Stage 1: population outlier screening over one uploaded batch."""
+    records = await _validated_records(request)
+    result = screen_population(pd.DataFrame.from_records(records))
+    flagged = result[result.out_of_family]
+    return {
+        "n_units": len(result),
+        "n_flagged": int(len(flagged)),
+        "n_clean": int(len(result) - len(flagged)),
+        "flagged_units": [str(uid) for uid in flagged["unit_id"]],
+        "units": [
+            {
+                "unit_id": str(row.unit_id),
+                "mad_baseline": bool(row.mad_baseline),
+                "mad_drift": bool(row.mad_drift),
+                "iforest": bool(row.iforest),
+                "out_of_family": bool(row.out_of_family),
+                "max_abs_z_baseline": float(row.max_abs_z_baseline),
+                "max_abs_z_drift": float(row.max_abs_z_drift),
+            }
+            for row in result.itertuples(index=False)
+        ],
     }
