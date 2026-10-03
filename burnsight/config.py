@@ -74,6 +74,19 @@ def dominant_channel(defect_mode: str) -> str | None:
     return DEFECT_MODES[defect_mode][0]
 
 
+# Inverse lookup: which defect mode a driving channel points at. Used by
+# explainability (MVP-6) to name the suspected physics failure for the
+# channel a triage decision hangs on.
+CHANNEL_DEFECT_MODE: dict[str, str] = {
+    channel: mode for mode, (channel, _code) in DEFECT_MODES.items()
+}
+
+
+def defect_mode_for_channel(channel: str) -> str:
+    """Suspected defect mode when ``channel`` drives a triage decision."""
+    return CHANNEL_DEFECT_MODE[channel]
+
+
 def channel_column(channel: str, hour: int) -> str:
     """Telemetry column name for a channel at a sample hour."""
     return f"{channel}_{hour}h"

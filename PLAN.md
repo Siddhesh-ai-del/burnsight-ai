@@ -130,7 +130,7 @@ flagged, **0/92 normal units flagged**, defect z-scores 11.9–31.0 against a
   case escalating to Yellow.
 
 ### MVP-6 — Explainability & Reason Codes (≤75 min)
-- [ ] **MVP-6**: per-flagged-component feature attribution (SHAP if installed,
+- [x] **MVP-6**: per-flagged-component feature attribution (SHAP if installed,
   else permutation importance) + physics-grounded reason codes
   (e.g. `ERR_MOSFET_GATE_DEGRADE`) mapped to the defect mode; explanation
   attached to every Yellow/Red decision.
@@ -181,6 +181,6 @@ mode is ever registered, its channel's guard side flips in one place.
 | MVP-3 | complete | RED→GREEN, 98 tests, 99% coverage (screen 100%), 0 CRITICAL, 0 new findings; decision D1 logged; demo: 8 flagged / 92 clean / 0 FP |
 | MVP-4 | complete | RED→GREEN (2 in-cycle bugs: feature naming, residual-learning fix), 113 tests, 99% coverage (forecast 100%), 0 CRITICAL, 0 new findings; held-out MAE 0.68/0.61/0.023 vs limits 3.0/3.0/0.12; probe complete: reportlab OK |
 | MVP-5 | complete | RED→GREEN, 139 tests, 99% coverage (triage 100%), 0 CRITICAL; HIGH (triage_batch 88 lines) = issue #4; honest 92/5/3 split achieved with spec-anchored thresholds (no tuning); A/B test proves α=10β flips uncertain units to Yellow |
-| MVP-6 | pending | next — SHAP explanations (shap 0.52 locked) |
-| MVP-7 | pending | dashboard |
+| MVP-6 | complete | RED→GREEN (2 in-cycle fixes: bg unit_id cast, shap (1,p) row convention), 155 tests, 99% coverage (explain 100%), 0 CRITICAL; HIGH (explain_batch 58 lines) = issue #5; SHAP top-ranked feature names planted driver for all 3 Reds, codes from config registry, reproducible via shap seed |
+| MVP-7 | pending | next — interactive dashboard (Chart.js, endpoints, slider) |
 | MVP-8 | pending | audit export (reportlab 5.0.1 available) |
