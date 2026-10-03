@@ -140,7 +140,7 @@ flagged, **0/92 normal units flagged**, defect z-scores 11.9–31.0 against a
 - **DEMO:** "Explain Decision" on Red #34: driver + reason code.
 
 ### MVP-7 — Interactive Dashboard (≤90 min)
-- [ ] **MVP-7**: FastAPI serves a static dashboard: upload CSV → batch table
+- [x] **MVP-7**: FastAPI serves a static dashboard: upload CSV → batch table
   with Green/Yellow/Red badges, trajectory chart (measured + forecast + spec
   limits) via Chart.js, expandable explanation panel, triage threshold slider.
 - **TDD targets:** endpoints serve HTML/JS with correct content type; batch
@@ -182,5 +182,5 @@ mode is ever registered, its channel's guard side flips in one place.
 | MVP-4 | complete | RED→GREEN (2 in-cycle bugs: feature naming, residual-learning fix), 113 tests, 99% coverage (forecast 100%), 0 CRITICAL, 0 new findings; held-out MAE 0.68/0.61/0.023 vs limits 3.0/3.0/0.12; probe complete: reportlab OK |
 | MVP-5 | complete | RED→GREEN, 139 tests, 99% coverage (triage 100%), 0 CRITICAL; HIGH (triage_batch 88 lines) = issue #4; honest 92/5/3 split achieved with spec-anchored thresholds (no tuning); A/B test proves α=10β flips uncertain units to Yellow |
 | MVP-6 | complete | RED→GREEN (2 in-cycle fixes: bg unit_id cast, shap (1,p) row convention), 155 tests, 99% coverage (explain 100%), 0 CRITICAL; HIGH (explain_batch 58 lines) = issue #5; SHAP top-ranked feature names planted driver for all 3 Reds, codes from config registry, reproducible via shap seed |
-| MVP-7 | pending | next — interactive dashboard (Chart.js, endpoints, slider) |
-| MVP-8 | pending | audit export (reportlab 5.0.1 available) |
+| MVP-7 | complete | RED→GREEN (1 test rewrite: golden-data risks are all 0/1 → crafted intermediate-risk unit for the slider test), 167 tests, 99% coverage (api 100%, pipeline 100%), 0 CRITICAL; XSS via row.innerHTML unit_id = issue #6 (HIGH); Chart.js vendored (no CDN/build), static dashboard + /api/triage with real alpha recompute |
+| MVP-8 | pending | next — audit export; reportlab 5.0.1 locked, PDF-vs-HTML per cut list decided at ticket start |

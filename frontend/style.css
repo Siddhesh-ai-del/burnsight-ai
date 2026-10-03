@@ -1,0 +1,105 @@
+/* BurnSight dashboard — plain CSS, no build tooling. */
+:root {
+  --bg: #0f1420;
+  --card: #171e2e;
+  --line: #263047;
+  --text: #e6ebf5;
+  --muted: #93a0b8;
+  --accent: #4f9cf9;
+  --green: #2fbf71;
+  --yellow: #f5a623;
+  --red: #e5484d;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+header, main, footer { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
+header { padding-top: 28px; }
+h1 { margin: 0 0 4px; font-size: 30px; letter-spacing: .5px; }
+.accent { color: var(--accent); }
+.tagline { margin: 0 0 20px; color: var(--muted); max-width: 760px; }
+h2 { font-size: 19px; margin: 0; }
+h3 { font-size: 15px; margin: 22px 0 8px; color: var(--muted);
+     text-transform: uppercase; letter-spacing: .8px; }
+h3 small { text-transform: none; letter-spacing: 0; font-weight: normal; }
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 16px 18px;
+  margin-bottom: 16px;
+}
+
+.controls form { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+input[type="file"] { color: var(--muted); }
+button {
+  background: var(--accent); border: 0; color: #fff; font-weight: 600;
+  padding: 9px 18px; border-radius: 7px; cursor: pointer; font-size: 15px;
+}
+button:disabled { opacity: .5; cursor: wait; }
+
+.slider-row { display: flex; gap: 12px; align-items: center; margin-top: 14px;
+              flex-wrap: wrap; color: var(--muted); }
+.slider-row input[type="range"] { width: 260px; accent-color: var(--accent); }
+.slider-row output { color: var(--text); font-weight: 600; min-width: 90px; }
+.hint { color: var(--muted); font-size: 13px; }
+.status { margin: 12px 0 0; color: var(--yellow); font-size: 14px; }
+.status[hidden], [hidden] { display: none !important; }
+
+.summary { display: flex; gap: 12px; align-items: center; margin-bottom: 16px;
+           flex-wrap: wrap; }
+.meta { color: var(--muted); font-size: 13px; margin-left: auto; }
+
+.badge {
+  display: inline-block; padding: 3px 12px; border-radius: 999px;
+  font-size: 12.5px; font-weight: 700; letter-spacing: .6px; color: #0f1420;
+}
+.badge b { font-size: 15px; }
+.badge.GREEN { background: var(--green); }
+.badge.YELLOW { background: var(--yellow); }
+.badge.RED { background: var(--red); color: #fff; }
+.badge:not(.GREEN):not(.YELLOW):not(.RED) { background: var(--muted); }
+
+.content { display: grid; grid-template-columns: 1fr; gap: 16px; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); }
+th { color: var(--muted); font-size: 12.5px; text-transform: uppercase;
+     letter-spacing: .6px; }
+tr.unit { cursor: default; }
+tr.unit.YELLOW, tr.unit.RED { cursor: pointer; }
+tr.unit:hover { background: #1d2537; }
+tr.unit.RED td:first-child { color: var(--red); font-weight: 700; }
+tr.unit.YELLOW td:first-child { color: var(--yellow); font-weight: 600; }
+.uid { font-family: ui-monospace, monospace; }
+.chev { color: var(--accent); }
+.num { font-family: ui-monospace, monospace; text-align: right; }
+.why-cell { color: var(--muted); font-size: 12.5px; }
+
+.detail-head { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.detail-head code { background: #101625; color: var(--yellow);
+                    padding: 3px 10px; border-radius: 6px; font-size: 13px; }
+.why { color: var(--muted); margin: 8px 0 0; }
+.chart-wrap { background: #101625; border: 1px solid var(--line);
+              border-radius: 8px; padding: 10px; }
+
+.shap-list { list-style: none; padding: 0; margin: 0; }
+.shap-list li { display: grid; grid-template-columns: 250px 1fr 150px;
+                gap: 10px; align-items: center; padding: 4px 0;
+                font-size: 13.5px; }
+.shap-list .feat { font-family: ui-monospace, monospace; color: var(--text); }
+.shap-list .bar { background: #101625; border-radius: 4px; height: 14px;
+                  overflow: hidden; }
+.shap-list .bar span { display: block; height: 100%; background: var(--accent); }
+.shap-list .val { font-family: ui-monospace, monospace; color: var(--muted);
+                  text-align: right; }
+
+footer { color: var(--muted); font-size: 12.5px; padding: 18px 20px 30px;
+         border-top: 1px solid var(--line); margin-top: 24px; }

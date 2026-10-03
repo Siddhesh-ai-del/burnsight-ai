@@ -11,16 +11,22 @@ problems, 415 for unsupported media types, 422 for schema/value failures.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import pandas as pd
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
-from burnsight.config import BATCH_COLUMNS
+from burnsight.config import BATCH_COLUMNS, DEFAULT_ALPHA, DEFAULT_BETA
 from burnsight.ingest import parse_batch
+from burnsight.pipeline import run_triage
 from burnsight.screen import screen_population
 
 app = FastAPI(title="BurnSight", version="0.0.1")
+
+_FRONTEND = Path(__file__).resolve().parent.parent / "frontend"
 
 _INPUT_ERROR_CODES = {
     "EMPTY_INPUT",
@@ -130,3 +136,27 @@ async def screen_batch(request: Request) -> dict[str, Any]:
             for row in result.itertuples(index=False)
         ],
     }
+
+
+@app.get("/")
+async def dashboard() -> FileResponse:
+    """Static dashboard shell: plain HTML + vendored Chart.js, no build step."""
+    return FileResponse(_FRONTEND / "index.html", media_type="text/html")
+
+
+@app.post("/api/triage")
+async def triage_endpoint(
+    request: Request,
+    alpha: float = Query(DEFAULT_ALPHA, ge=DEFAULT_BETA),
+) -> dict[str, Any]:
+    """Full pipeline: screen -> forecast -> risk triage -> SHAP explanation.
+
+    ``alpha`` is the miss cost of the MVP-5 loss matrix (beta fixed at
+    DEFAULT_BETA): the slider value re-runs triage server-side rather than
+    being echoed back.
+    """
+    records = await _validated_records(request)
+    return run_triage(records, alpha=alpha)
+
+
+app.mount("/static", StaticFiles(directory=str(_FRONTEND)), name="static")

@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BurnSight AI — Burn-In Screening</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/vendor/chart.umd.js" defer></script>
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <header>
+    <h1>BurnSight <span class="accent">AI</span></h1>
+    <p class="tagline">AI-driven anomaly detection in component burn-in &amp;
+      screening — upload an early-lot sample (0/24/96&nbsp;h), get a screened,
+      168&nbsp;h-forecasted, risk-triaged verdict.</p>
+  </header>
+
+  <main>
+    <section class="controls card">
+      <form id="uploadForm">
+        <input type="file" id="fileInput" accept=".csv,.json" required>
+        <button type="submit" id="analyzeBtn">Analyze lot</button>
+      </form>
+      <div class="slider-row">
+        <label for="alphaSlider">Miss-cost ratio <strong>&alpha;/&beta;</strong></label>
+        <input type="range" id="alphaSlider" min="1" max="15" step="1" value="1">
+        <output id="alphaOut">&alpha; = 10<sup>1</sup></output>
+        <span class="hint">escalation threshold p&#42; =
+          <span id="pStar">0.091</span></span>
+      </div>
+      <p id="status" class="status" hidden></p>
+    </section>
+
+    <section id="summary" class="summary" hidden>
+      <div class="badge GREEN"><b id="nGreen">0</b> Green</div>
+      <div class="badge YELLOW"><b id="nYellow">0</b> Yellow</div>
+      <div class="badge RED"><b id="nRed">0</b> Red</div>
+      <span id="batchMeta" class="meta"></span>
+    </section>
+
+    <section id="content" class="content" hidden>
+      <div class="card table-card">
+        <table id="unitTable">
+          <thead>
+            <tr>
+              <th>Unit</th><th>Verdict</th><th>Driver channel</th>
+              <th>168&thinsp;h forecast</th><th>Risk</th><th>Why</th>
+            </tr>
+          </thead>
+          <tbody id="unitBody"></tbody>
+        </table>
+        <p class="hint">Click a flagged row to expand its explanation.</p>
+      </div>
+
+      <div id="detail" class="card detail" hidden>
+        <div class="detail-head">
+          <h2 id="detailTitle">—</h2>
+          <span id="detailBadge" class="badge">—</span>
+          <code id="detailCode">—</code>
+        </div>
+        <p id="detailWhy" class="why"></p>
+
+        <h3>Driver trajectory <small>(measured &middot; forecast &middot;
+          spec limits)</small></h3>
+        <div class="chart-wrap"><canvas id="trajChart" width="720" height="340"></canvas></div>
+
+        <h3>Explain decision <small>(SHAP, top features)</small></h3>
+        <ul id="shapList" class="shap-list"></ul>
+      </div>
+    </section>
+  </main>
+
+  <footer>Synthetic Arrhenius lot &middot; model trained on reference seeds
+    1–4 &middot; SHAP seeded for reproducible explanations</footer>
+</body>
+</html>
