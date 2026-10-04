@@ -92,6 +92,8 @@ curl -OJ "http://127.0.0.1:8000/api/certificate/<audit_id>/U026"
    ![Threshold slider](docs/images/mvp7-4-slider.png)
 5. **Certificate** — in the Explain panel, **⬇ Certificate (PDF)** downloads a ReportLab certificate rendered from the append-only audit log; the **audit JSON ↗** link shows the stored record (input digest, model/policy version, decisions, explanations, timestamp).
 
+   ![Screening certificate for Red unit U026](docs/images/mvp8-certificate.png)
+
 ![Dashboard home](docs/images/mvp7-1-home.png)
 
 ## Architecture
