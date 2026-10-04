@@ -1,0 +1,74 @@
+/* BurnSight mission-console design tokens.
+   Direction: aerospace flight-console — deep instrument-bay backgrounds,
+   phosphor status colors, instrument-cyan accent (NOT the old default
+   blue), mono telemetry numerics, tight instrument radii. */
+
+:root {
+  /* ---- elevation: deep instrument bay ---- */
+  --void: #070a0f;
+  --base: #0a0e15;
+  --panel: #0f141d;
+  --raised: #151b27;
+  --hair: #1d2636;
+  --rule: #2a3549;
+
+  /* ---- ink ---- */
+  --ink: #e2e9f7;
+  --dim: #94a1bc;
+  --faint: #626f8b;
+
+  /* ---- mission status ---- */
+  --ok: #37d67a;
+  --warn: #f2b134;
+  --alarm: #ff5d64;
+
+  /* ---- instrument accent ---- */
+  --accent: #5cd9e8;
+  --accent-deep: #1a7f8f;
+  --on-accent: #061216;
+
+  /* ---- type ---- */
+  --font-ui: "Inter Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+  --t-xs: 0.6875rem;   /* 11 — kickers */
+  --t-sm: 0.75rem;     /* 12 */
+  --t-md: 0.8125rem;   /* 13 */
+  --t-base: 0.875rem;  /* 14 */
+  --t-lg: 0.9375rem;   /* 15 */
+  --t-xl: 1.0625rem;   /* 17 — section heads */
+  --brand-size: clamp(1.5rem, 3vw, 1.875rem);
+  --track-kicker: 0.16em;
+
+  /* ---- spacing (4px base) ---- */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 20px;
+  --s6: 24px;
+  --s8: 32px;
+  --s10: 40px;
+  --s12: 48px;
+
+  /* ---- radius: instruments, not pills ---- */
+  --r-xs: 3px;
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+
+  /* ---- depth ---- */
+  --lift: 0 12px 32px -14px rgba(0, 0, 0, 0.65);
+  --hairline: 1px solid var(--hair);
+
+  /* ---- motion ---- */
+  --dur-fast: 110ms;
+  --dur: 200ms;
+  --dur-slow: 340ms;
+  --ease: cubic-bezier(0.22, 0.8, 0.28, 1);
+
+  /* ---- layers ---- */
+  --z-bg: 0;
+  --z-content: 1;
+  --z-header: 30;
+  --z-toast: 60;
+}

@@ -1,10 +1,22 @@
-/* Placeholder shell — Phase 1 replaces this with the mission-control
-   layout; it exists from Phase 0 so the build/test pipeline is green. */
+import { Background } from "./components/Background";
+import { Footer } from "./components/Footer";
+import { Masthead } from "./components/Masthead";
+import { Panel } from "./components/Panel";
+
 export function App() {
   return (
-    <main>
-      <h1>BurnSight AI</h1>
-      <p>Screening dashboard loading…</p>
-    </main>
+    <div className="shell">
+      <Background />
+      <Masthead />
+      <main className="console">
+        <Panel index="01" title="Payload intake">
+          <p className="standby">Bay empty</p>
+        </Panel>
+        <Panel index="02" title="Triage results">
+          <p className="standby">Awaiting lot upload</p>
+        </Panel>
+      </main>
+      <Footer />
+    </div>
   );
 }
