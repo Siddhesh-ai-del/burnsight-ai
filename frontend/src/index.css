@@ -1,6 +1,48 @@
+@import "tailwindcss";
 @import "./styles/tokens.css";
 @import "./styles/shell.css";
+@import "./styles/console.css";
 
+/* ---------------------------------------------------------------
+   Tailwind v4 theme — shadcn token names, mission-console values.
+   bg-background / text-muted-foreground / border-input / ring-ring
+   and friends resolve here; :root raw vars cover sonner's inline
+   style (--popover, --border, --radius).
+   --------------------------------------------------------------- */
+@theme {
+  --color-background: #0a0e15;
+  --color-foreground: #e2e9f7;
+  --color-card: #0f141d;
+  --color-card-foreground: #e2e9f7;
+  --color-popover: #151b27;
+  --color-popover-foreground: #e2e9f7;
+  --color-primary: #5cd9e8;
+  --color-primary-foreground: #061216;
+  --color-secondary: #151b27;
+  --color-secondary-foreground: #94a1bc;
+  --color-muted: #151b27;
+  --color-muted-foreground: #94a1bc;
+  --color-accent: #1c2434;
+  --color-accent-foreground: #e2e9f7;
+  --color-destructive: #ff5d64;
+  --color-destructive-foreground: #ffffff;
+  --color-border: #1d2636;
+  --color-input: #2a3549;
+  --color-ring: #5cd9e8;
+  --font-sans: "Inter Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+}
+
+:root {
+  --radius: 10px;
+  --popover: #151b27;
+  --popover-foreground: #e2e9f7;
+  --border: #1d2636;
+}
+
+/* ---------------------------------------------------------------
+   Base layer (runs after Tailwind preflight)
+   --------------------------------------------------------------- */
 *,
 *::before,
 *::after {
