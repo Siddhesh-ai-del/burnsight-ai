@@ -8,6 +8,9 @@ TDD targets from PLAN.md:
 - smoke test drives upload -> results flow end-to-end via httpx.
 """
 
+from __future__ import annotations
+
+import re
 from pathlib import Path
 
 import pandas as pd
@@ -19,6 +22,12 @@ from burnsight.api import app
 SAMPLES = Path(__file__).resolve().parent.parent / "data" / "samples"
 GOLDEN = SAMPLES / "batch_golden.csv"
 client = TestClient(app)
+
+
+def _local_assets() -> list[str]:
+    """Asset paths (/static/...) referenced by the built shell."""
+    html = client.get("/").text
+    return re.findall(r'(?:src|href)="(/static/[^"]+)"', html)
 
 
 @pytest.fixture(scope="module")
@@ -38,22 +47,28 @@ class TestStaticServing:
         assert response.status_code == 200
         assert response.headers["content-type"].startswith("text/html")
         assert "BurnSight" in response.text
-        assert "<canvas" in response.text  # chart mount point exists
+        assert '<div id="root">' in response.text  # React mount point
 
-    def test_app_js_served_with_javascript_content_type(self):
-        response = client.get("/static/app.js")
-        assert response.status_code == 200
-        assert "javascript" in response.headers["content-type"]
+    def test_js_bundle_served_with_javascript_content_type(self):
+        js_assets = [p for p in _local_assets() if p.endswith(".js")]
+        assert js_assets, "built shell must reference a local JS bundle"
+        for path in js_assets:
+            response = client.get(path)
+            assert response.status_code == 200, path
+            assert "javascript" in response.headers["content-type"]
 
     def test_css_served_with_css_content_type(self):
-        response = client.get("/static/style.css")
-        assert response.status_code == 200
-        assert response.headers["content-type"].startswith("text/css")
+        css_assets = [p for p in _local_assets() if p.endswith(".css")]
+        assert css_assets, "built shell must reference a local stylesheet"
+        for path in css_assets:
+            response = client.get(path)
+            assert response.status_code == 200, path
+            assert response.headers["content-type"].startswith("text/css")
 
-    def test_chart_js_vendored_no_cdn_dependency(self):
-        response = client.get("/static/vendor/chart.umd.js")
-        assert response.status_code == 200
-        assert "Chart" in response.text[:10_000]
+    def test_no_cdn_dependency(self):
+        """All assets ship from /static — no remote script/style URLs."""
+        html = client.get("/").text
+        assert not re.search(r'(?:src|href)="https?://', html)
 
 
 class TestTriageEndpoint:
@@ -161,7 +176,8 @@ class TestHttpxSmokeFlow:
     def test_upload_to_results_flow_like_a_browser(self):
         home = client.get("/")
         assert home.status_code == 200
-        assert "app.js" in home.text
+        assert '<div id="root">' in home.text
+        assert _local_assets()
 
         upload = client.post(
             "/api/triage",

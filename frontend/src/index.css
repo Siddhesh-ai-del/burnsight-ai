@@ -1,0 +1,11 @@
+/* Base reset — Phase 1 layers the mission-control tokens on top. */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #0b0f16;
+  color: #dfe6f2;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}

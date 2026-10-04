@@ -30,6 +30,7 @@ credentials.*
 # Build / tooling
 node_modules/
 dist/
+!frontend/dist/
 build/
 *.log
 

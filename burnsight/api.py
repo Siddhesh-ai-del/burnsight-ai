@@ -27,7 +27,7 @@ from burnsight.screen import screen_population
 
 app = FastAPI(title="BurnSight", version="0.0.1")
 
-_FRONTEND = Path(__file__).resolve().parent.parent / "frontend"
+_FRONTEND = Path(__file__).resolve().parent.parent / "frontend" / "dist"
 
 _INPUT_ERROR_CODES = {
     "EMPTY_INPUT",
@@ -141,7 +141,7 @@ async def screen_batch(request: Request) -> dict[str, Any]:
 
 @app.get("/")
 async def dashboard() -> FileResponse:
-    """Static dashboard shell: plain HTML + vendored Chart.js, no build step."""
+    """Built React dashboard shell (Vite output served from frontend/dist)."""
     return FileResponse(_FRONTEND / "index.html", media_type="text/html")
 
 
