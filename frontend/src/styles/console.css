@@ -13,6 +13,26 @@
   gap: var(--s3);
   margin-top: var(--s4);
   flex-wrap: wrap;
+  /* Scale ticks: ornament the console AND give the glass button real
+     content to refract (a lens over solid colour bends nothing). */
+  background-image: repeating-linear-gradient(
+    to right,
+    rgba(92, 217, 232, 0.16) 0 1px,
+    transparent 1px 14px
+  );
+  background-size: 100% 7px;
+  background-position: left bottom;
+  background-repeat: no-repeat;
+  padding-bottom: var(--s2);
+}
+
+/* Button lens: material mode shrink-wraps the button inside the lens. */
+.run-glass {
+  vertical-align: middle;
+}
+
+.run-glass:has(.run-btn:disabled) {
+  opacity: 0.5;
 }
 
 .run-btn {
@@ -20,6 +40,15 @@
   letter-spacing: 0.06em;
   font-size: var(--t-sm);
   font-weight: 700;
+  /* Translucent so the lens shows through — solid bg-primary would
+     hide the refraction (library warns about opaque wrappers). */
+  background: rgba(92, 217, 232, 0.14);
+  color: var(--accent);
+  border: 1px solid rgba(92, 217, 232, 0.42);
+}
+
+.run-btn:hover {
+  background: rgba(92, 217, 232, 0.22);
 }
 
 .intake-file {
@@ -56,6 +85,27 @@
 
 .alpha-slider {
   cursor: pointer;
+}
+
+/* Lens fills the 20px thumb; refracts the cyan range fill beneath. */
+.slider-thumb-lens {
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+}
+
+/* Fallbacks (reduced motion / ?glass=off): keep each surface legible
+   without the lens — the generic dark fallback would swallow them. */
+.run-glass.glass-fallback {
+  background: transparent;
+}
+
+.slider-thumb-lens.glass-fallback {
+  background: rgba(226, 233, 247, 0.85);
+}
+
+.drawer-rim-lens.glass-fallback {
+  background: rgba(21, 27, 39, 0.72);
 }
 
 .intake-status {
@@ -272,6 +322,32 @@
   border-bottom: 0;
   border-radius: var(--r-lg) var(--r-lg) 0 0;
   box-shadow: 0 -20px 60px -20px rgba(0, 0, 0, 0.8);
+  overflow: hidden;
+}
+
+/* Phase 3: glass rim across the drawer top — copy mode bends a fresh
+   telemetry layer; the drag handle rides the lens as a crisp sibling. */
+.drawer-rim {
+  position: relative;
+  width: 100%;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+
+.drawer-rim-lens {
+  z-index: 0;
+}
+
+.drawer-rim-handle {
+  position: relative;
+  z-index: 1;
+  width: 100px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(226, 233, 247, 0.28);
 }
 
 .detail-title {

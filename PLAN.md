@@ -185,6 +185,70 @@ mode is ever registered, its channel's guard side flips in one place.
 | MVP-7 | complete | RED→GREEN (1 test rewrite: golden-data risks are all 0/1 → crafted intermediate-risk unit for the slider test), 167 tests, 99% coverage (api 100%, pipeline 100%), 0 CRITICAL; XSS via row.innerHTML unit_id = issue #6 (HIGH); Chart.js vendored (no CDN/build), static dashboard + /api/triage with real alpha recompute |
 | MVP-8 | complete | RED→GREEN (first try, 0 in-cycle fixes), 182 tests, 99% coverage (audit 100%, api 100%, pipeline 100%, config 100%), 0 CRITICAL; findings: certificate_lines 57 lines = issue #7 (HIGH), JSONL lock/malformed-line = issue #8 (MED); **cut-list decision: certificate = ReportLab PDF (locked primary), HTML cut NOT taken**; honest README shipped with screenshots; 8/8 boxes ticked |
 
+## Frontend redesign (Phases 0–6) — locked plan status
+
+Architecture: Vite 7 + React 19 + TS SPA under `frontend/`, built into
+`frontend/dist` (committed — uvicorn/pytest run without Node). ObsidianUI
+component sets; the vanilla `style.css`/`app.js` dashboard is removed. Zero
+backend-logic changes (static-dir pointer in `api.py` only); **182 tests
+green at every phase boundary**.
+
+| Phase | Commit | State | Notes |
+|---|---|---|---|
+| 0 toolchain | `fefea0d` | complete | Vite+React served by FastAPI |
+| 1 tokens/fonts/shell | `c15d9e9` | complete | design tokens, vendored fonts, mission-console shell |
+| 2 ObsidianUI | `fa19e17` | complete | all six sets wired; upload → triage → drawer flow verified live |
+| 3 liquid glass | *this commit* | complete, **gate aborted default** | refraction proven on 4 surfaces; FPS gate failed → fallback default, `?glass=on` opt-in (below) |
+| 4 data presentation | — | pending | readouts, recharts trajectory, signed SHAP bars, certificate/audit |
+| 5 a11y & states | — | pending | skeleton loading, keyboard expansion, focus, error/empty |
+| 6 ship | — | pending | full pytest, Playwright E2E, README refresh, `/code-review`, `ecc:security-audit` |
+
+### Phase 3 decision record — liquid glass ships disabled by default (option A)
+
+**Success criterion status:** *visible real refraction on exactly 4 chrome
+surfaces* — met as **capability evidence**: bend quantified numerically on
+all four surfaces in Chrome 155 (header rim +15–17 px tapering to ~1 px at
+centre; button −2.56 px → 0 across the lens; thumb +0.79 px rim; drawer rim
+stripe spacing distorted from 17 px nominal). Evidence:
+`.playwright-mcp/p3-cleanbars.png` (header), `p3-striped.png`
+(button+thumb), `p3-drawer-on.png` (drawer rim), clean states
+`p3-mat-on.png` / `p3-mat-off.png`.
+
+**FPS gate (mandatory) — all four surfaces FAILED on real GPU**
+(ANGLE/Radeon 740M; SwiftShader cross-check in parentheses):
+
+| Config | FPS | Gate ≥55 & ≥90% of baseline | Result |
+|---|---|---|---|
+| `glass=off` baseline | 60.0 (60.2) | — | — |
+| header only | 35.8 (18.6) | ≥55 | ✗ |
+| button only | 37.0 (40.2) | ≥55 | ✗ |
+| thumb only | 35.9 (40.1) | ≥55 | ✗ |
+| drawer open | 28.4 (16.8) | ≥55 | ✗ |
+| all three idle | 13.9 (6.2) | ≥55 | ✗ |
+
+Rationale is measured, not assumed: a minimal `saturate() url(#…)` filter
+over the same header region runs at 57.1 fps (cost = the library's
+13-primitive displacement graph, not `backdrop-filter: url()` itself);
+freezing all ambient animation does not rescue any surface (header 30.3,
+button 39.8, thumb 27.1, drawer 28.7, all-on 12.2); an 80×80 thumb region
+costs about the same as the header's 1397×278 region (cost is
+graph-complexity-bound, not area-bound). Decision **A (plan-literal abort)**:
+`.glass-fallback` renders on all four surfaces by default; glass stays
+available for demos/evaluation via **`?glass=on`** (also
+`?glass=header,thumb` for per-surface); `?glass=off` is a no-op kept for
+stable URLs; `prefers-reduced-motion` still force-kills the lens.
+
+**v0.1.0 API divergence finding:** the plan's perf knob does not exist on
+the material path — `@samasante/liquid-glass@0.1.0` only dispatches to
+`GlassMaterial` when `filterResolution` is *absent*, so passing
+`filterResolution` demotes the surface to `GlassDOM` (in-place bend, which
+smears children). GlassDOM itself defaults `filterResolution = 1`, so the
+"cap at 1" invariant holds, but material surfaces have **no resolution
+lever** at all. Copy mode (`refract`) is only visually correct for the
+drawer (its backdrop *is* `Background`); header/button/thumb need the live
+page backdrop and are material-only — no plan-compliant path to a passing
+surface remained after the animation-freeze control failed.
+
 ## Post-MVP backlog (open GitHub issues)
 
 All review findings were logged, not fixed in-sprint (CRITICAL-only fix rule;

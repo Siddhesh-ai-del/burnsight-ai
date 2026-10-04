@@ -77,10 +77,24 @@
   top: 0;
   z-index: var(--z-header);
   border-bottom: var(--hairline);
-  background: linear-gradient(180deg, rgba(10, 14, 21, 0.97), rgba(10, 14, 21, 0.92));
+  /* Transparent: the glass lens must see the telemetry layer beneath.
+     Non-lens paths get .glass-fallback instead. */
+  background: transparent;
+}
+
+.masthead-glass {
+  /* Material mode honours a className width over its inline-block sizing. */
+  width: 100%;
+}
+
+/* Plain-div fallback when the lens is off (reduced motion / ?glass=off). */
+.glass-fallback {
+  background: rgba(10, 14, 21, 0.94);
 }
 
 .masthead-inner {
+  position: relative;
+  z-index: 1; /* crisp content rides above the lens */
   max-width: 1280px;
   margin: 0 auto;
   padding: var(--s5) var(--s6) var(--s4);

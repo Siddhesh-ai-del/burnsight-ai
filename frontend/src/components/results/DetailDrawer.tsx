@@ -30,6 +30,8 @@ import {
 } from "@/components/ui/tabs";
 import { ChevronDown, FileDown, ScrollText } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { GlassSurface } from "@/components/glass/GlassSurface";
+import { Background } from "@/components/Background";
 import type { FlaggedDetail } from "@/lib/api";
 
 interface DetailDrawerProps {
@@ -47,6 +49,24 @@ export function DetailDrawer({ detail, auditId, onClose }: DetailDrawerProps) {
       }}
     >
       <DrawerContent className="detail-drawer">
+        {/* Phase 3 glass rim: copy mode refracts a fresh telemetry layer
+            (the live backdrop behind the drawer is dimmed to near-black —
+            copy mode is where bending matters). Handle rides the lens as
+            a crisp sibling on top. */}
+        <div className="drawer-rim">
+          <GlassSurface
+            name="drawer"
+            className="drawer-rim-lens"
+            refract={<Background />}
+            style={{
+              position: "absolute",
+              inset: 0,
+              width: "auto",
+              pointerEvents: "none",
+            }}
+          />
+          <span className="drawer-rim-handle" aria-hidden="true" />
+        </div>
         {detail ? (
           <>
             <DrawerHeader>

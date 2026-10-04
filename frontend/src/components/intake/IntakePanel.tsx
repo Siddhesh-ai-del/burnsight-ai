@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
 import { Spinner } from "@/components/ui/spinner";
+import { GlassSurface } from "@/components/glass/GlassSurface";
 import FileInput from "@/components/block/file-input";
 import { Terminal } from "lucide-react";
 
@@ -43,15 +44,19 @@ export function IntakePanel({
       />
 
       <div className="intake-actions">
-        <Button
-          type="button"
-          onClick={onAnalyze}
-          disabled={!file || busy}
-          className="run-btn"
-        >
-          {busy ? <Spinner className="animate-spin" /> : null}
-          {busy ? "Screening…" : hasResults ? "Re-run screening" : "Analyze lot"}
-        </Button>
+        {/* Phase 3: material-mode glass — button inside the lens, crisp,
+            backdrop bend of the scale ticks beneath. */}
+        <GlassSurface name="button" className="run-glass" radius={8}>
+          <Button
+            type="button"
+            onClick={onAnalyze}
+            disabled={!file || busy}
+            className="run-btn"
+          >
+            {busy ? <Spinner className="animate-spin" /> : null}
+            {busy ? "Screening…" : hasResults ? "Re-run screening" : "Analyze lot"}
+          </Button>
+        </GlassSurface>
         <span className="hint num intake-file">
           {file ? file.name : "no lot loaded"}
         </span>
