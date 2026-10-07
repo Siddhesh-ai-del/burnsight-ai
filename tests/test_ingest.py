@@ -120,6 +120,55 @@ class TestStructuralErrors:
         assert [e["code"] for e in errors] == ["DUPLICATE_UNIT"]
         assert errors[0]["field"] == "unit_id"
 
+    @pytest.mark.parametrize(
+        "unit_id",
+        [
+            "<img src=x onerror=alert(1)>",
+            'U001"><script>alert(1)</script>',
+            "U001'; DROP TABLE units;--",
+            "U001/../secret",
+        ],
+        ids=["img-tag", "script-tag", "sql-ish", "path-traversal"],
+    )
+    def test_unit_id_rejects_markup_and_control_characters(self, unit_id):
+        """XSS defense-in-depth (issue #6): unit_id is rendered into the
+        dashboard, so ingest rejects anything outside a safe identifier
+        charset instead of relying on the UI to escape it."""
+        rows = [
+            {
+                "unit_id": unit_id,
+                "device_type": "POWER_MOSFET",
+                "temp_c": 125.0,
+                **{
+                    channel_column(ch, h): 50.0
+                    for ch in PARAM_CHANNELS
+                    for h in EARLY_HOURS
+                },
+            }
+        ]
+        records, errors = parse_batch(rows)
+        assert records == []
+        assert errors[0]["code"] == "INVALID_VALUE"
+        assert errors[0]["field"] == "unit_id"
+
+    def test_unit_id_accepts_safe_identifier_charset(self):
+        rows = [
+            {
+                "unit_id": f"U-001_{i}.A",
+                "device_type": "POWER_MOSFET",
+                "temp_c": 125.0,
+                **{
+                    channel_column(ch, h): 50.0
+                    for ch in PARAM_CHANNELS
+                    for h in EARLY_HOURS
+                },
+            }
+            for i in range(2)
+        ]
+        records, errors = parse_batch(rows)
+        assert errors == []
+        assert len(records) == 2
+
     def test_unknown_severity_value_rejected(self):
         rows = [
             {

@@ -21,7 +21,10 @@ DefectMode = Literal["NONE", "GATE_OXIDE_DEGRADE", "RDS_DRIFT", "THRESHOLD_SHIFT
 class UnitRecord(BaseModel):
     """One component's burn-in telemetry."""
 
-    unit_id: str = Field(min_length=1)
+    # Identifiers are rendered into the dashboard and embedded in
+    # certificate filenames, so ingest restricts them to a safe charset
+    # (defense in depth behind the UI's escaping — issue #6).
+    unit_id: str = Field(min_length=1, pattern=r"^[A-Za-z0-9_.-]+$")
     device_type: str = Field(default=DEVICE_TYPE, min_length=1)
     temp_c: float = Field(ge=MIN_TEMP_C, le=MAX_TEMP_C)
 
