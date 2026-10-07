@@ -132,6 +132,77 @@ def _assign_severity(
     return severity, {"defect": defect_idx, "borderline": borderline_idx}
 
 
+def _lane_temperatures(
+    rng: np.random.Generator, n_units: int, temp_mean_c: float, temp_std_c: float
+) -> np.ndarray:
+    """One clipped lane temperature per unit."""
+    drawn = rng.normal(temp_mean_c, temp_std_c, n_units)
+    return np.clip(drawn, MIN_TEMP_C, MAX_TEMP_C)
+
+
+def _sample_population(
+    rng: np.random.Generator, n_units: int
+) -> tuple[np.ndarray, np.ndarray]:
+    """Intrinsic baseline (floored) and benign 168 h drift, per channel."""
+    baseline = np.column_stack(
+        [
+            np.maximum(rng.normal(*_BASELINE_PARAMS[ch], n_units), _BASELINE_FLOOR[ch])
+            for ch in PARAM_CHANNELS
+        ]
+    )
+    drift = np.column_stack(
+        [rng.normal(*_NORMAL_DRIFT[ch], n_units) for ch in PARAM_CHANNELS]
+    )
+    return baseline, drift
+
+
+def _plant_targets(
+    rng: np.random.Generator,
+    baseline: np.ndarray,
+    drift: np.ndarray,
+    planted: dict[str, np.ndarray],
+) -> tuple[np.ndarray, np.ndarray]:
+    """Return ``(drift, defect_mode)`` with the planted failure targets applied."""
+    n_units = drift.shape[0]
+    modes = list(DEFECT_MODES)
+    defect_modes = {
+        int(idx): modes[i % len(modes)] for i, idx in enumerate(planted["defect"])
+    }
+    mode_names = np.array(
+        [defect_modes.get(i, "NONE") for i in range(n_units)], dtype=object
+    )
+
+    for idx in planted["defect"]:
+        channel = DEFECT_MODES[defect_modes[int(idx)]][0]
+        j = PARAM_CHANNELS.index(channel)
+        _lsl, usl = SPEC_LIMITS[channel]
+        target = rng.uniform(*_DEFECT_OVERSHOOT) * usl
+        drift[idx, j] = target - baseline[idx, j]
+
+    for i, idx in enumerate(planted["borderline"]):
+        channel = PARAM_CHANNELS[i % len(PARAM_CHANNELS)]
+        j = PARAM_CHANNELS.index(channel)
+        lsl, usl = SPEC_LIMITS[channel]
+        target = lsl + rng.uniform(*_BORDERLINE_POS) * (usl - lsl)
+        drift[idx, j] = target - baseline[idx, j]
+    return drift, mode_names
+
+
+def _trajectories(
+    rng: np.random.Generator,
+    baseline: np.ndarray,
+    drift: np.ndarray,
+    temp_c: np.ndarray,
+) -> np.ndarray:
+    """Layer noise over the Arrhenius-scaled drift: (n_units, n_ch, n_hours)."""
+    noise = (
+        rng.normal(size=(len(temp_c), len(PARAM_CHANNELS), len(SAMPLE_HOURS)))
+        * np.array([_NOISE_SD[ch] for ch in PARAM_CHANNELS])[:, None]
+    )
+    progress = progress_curve(arrhenius_rate(temp_c))[:, None, :]
+    return baseline[:, :, None] + drift[:, :, None] * progress + noise
+
+
 def generate_batch(
     n_units: int = 100,
     defect_count: int = 3,
@@ -144,51 +215,18 @@ def generate_batch(
     _validate(n_units, defect_count, borderline_count, seed)
     rng = np.random.default_rng(seed)
 
-    temp_c = np.clip(
-        rng.normal(temp_mean_c, temp_std_c, n_units), MIN_TEMP_C, MAX_TEMP_C
-    )
+    temp_c = _lane_temperatures(rng, n_units, temp_mean_c, temp_std_c)
     severity, planted = _assign_severity(rng, n_units, defect_count, borderline_count)
-
-    baseline = np.column_stack(
-        [
-            np.maximum(rng.normal(*_BASELINE_PARAMS[ch], n_units), _BASELINE_FLOOR[ch])
-            for ch in PARAM_CHANNELS
-        ]
-    )
-    drift = np.column_stack(
-        [rng.normal(*_NORMAL_DRIFT[ch], n_units) for ch in PARAM_CHANNELS]
-    )
-    modes = list(DEFECT_MODES)
-    mode_names = np.full(n_units, "NONE", dtype=object)
-    for i, idx in enumerate(planted["defect"]):
-        mode = modes[i % len(modes)]
-        channel = DEFECT_MODES[mode][0]
-        j = PARAM_CHANNELS.index(channel)
-        _lsl, usl = SPEC_LIMITS[channel]
-        target = rng.uniform(*_DEFECT_OVERSHOOT) * usl
-        drift[idx, j] = target - baseline[idx, j]
-        mode_names[idx] = mode
-    for i, idx in enumerate(planted["borderline"]):
-        channel = PARAM_CHANNELS[i % len(PARAM_CHANNELS)]
-        j = PARAM_CHANNELS.index(channel)
-        lsl, usl = SPEC_LIMITS[channel]
-        target = lsl + rng.uniform(*_BORDERLINE_POS) * (usl - lsl)
-        drift[idx, j] = target - baseline[idx, j]
-
-    noise = (
-        rng.normal(size=(n_units, len(PARAM_CHANNELS), len(SAMPLE_HOURS)))
-        * np.array([_NOISE_SD[ch] for ch in PARAM_CHANNELS])[:, None]
-    )
-    acceleration = arrhenius_rate(temp_c)
-    progress = progress_curve(acceleration)[:, None, :]  # (n_units, 1, n_hours)
-    trajectories = baseline[:, :, None] + drift[:, :, None] * progress + noise
+    baseline, drift = _sample_population(rng, n_units)
+    drift, defect_mode = _plant_targets(rng, baseline, drift, planted)
+    trajectories = _trajectories(rng, baseline, drift, temp_c)
 
     data: dict[str, object] = {
         "unit_id": [f"U{j:03d}" for j in range(n_units)],
         "device_type": DEVICE_TYPE,
         "temp_c": temp_c,
         "severity": severity,
-        "defect_mode": mode_names,
+        "defect_mode": defect_mode,
     }
     for j, channel in enumerate(PARAM_CHANNELS):
         for h, hour in enumerate(SAMPLE_HOURS):
