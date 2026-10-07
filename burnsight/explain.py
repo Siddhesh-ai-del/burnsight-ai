@@ -72,6 +72,53 @@ def _background_rows(features: pd.DataFrame, triage: pd.DataFrame) -> np.ndarray
     return baseline.drop(columns="unit_id").iloc[::step].to_numpy(dtype=float)
 
 
+def _instance(
+    features: pd.DataFrame, unit_id: str, feature_columns: list[str]
+) -> np.ndarray:
+    """One unit's feature row as a float array."""
+    return features.loc[features.unit_id == unit_id, list(feature_columns)].to_numpy(
+        dtype=float
+    )[0]
+
+
+def _explain_unit(
+    explainer: shap.Explainer,
+    decision: pd.Series,
+    instance: np.ndarray,
+    feature_columns: list[str],
+) -> list[dict]:
+    """Attribution rows for one flagged unit, ranked by |SHAP value|.
+
+    shap 0.52 iterates axis 0: a single instance must be a
+    ``(1, n_features)`` batch — a bare 1-D row would be read as
+    ``n_features`` scalar instances.
+    """
+    channel = decision.worst_channel
+    values = np.asarray(explainer(instance.reshape(1, -1)).values)[0]
+    mode = defect_mode_for_channel(channel)
+    code = reason_code(mode)
+    total = float(np.abs(values).sum())
+
+    rows: list[dict] = []
+    for rank, index in enumerate(np.argsort(-np.abs(values)), start=1):
+        magnitude = abs(float(values[index]))
+        rows.append(
+            {
+                "unit_id": decision.unit_id,
+                "color": decision.color,
+                "reason_code": code,
+                "defect_mode": mode,
+                "worst_channel": channel,
+                "rank": int(rank),
+                "feature": feature_columns[index],
+                "shap_value": float(values[index]),
+                "feature_value": float(instance[index]),
+                "weight": magnitude / max(total, _BACKGROUND_FLOOR),
+            }
+        )
+    return rows
+
+
 def explain_batch(
     model: ForecastModel,
     batch: pd.DataFrame,
@@ -87,8 +134,7 @@ def explain_batch(
     if flagged.empty:
         return pd.DataFrame(columns=EXPLAIN_COLUMNS)
 
-    features = build_features(batch)
-    features = features.copy()
+    features = build_features(batch).copy()
     features.insert(0, "unit_id", batch["unit_id"].to_numpy())
     background = _background_rows(features, triage)
 
@@ -100,33 +146,10 @@ def explain_batch(
             explainers[channel] = shap.Explainer(
                 _total_predictor(model, channel), background, seed=seed
             )
-        instance = features.loc[
-            features.unit_id == decision.unit_id, list(model.feature_columns)
-        ].to_numpy(dtype=float)[0]
-
-        # shap 0.52 iterates axis 0: a single instance must be a (1, n_features)
-        # batch — a bare 1-D row would be read as n_features scalar instances.
-        explanation = explainers[channel](instance.reshape(1, -1))
-        values = np.asarray(explanation.values)[0]
-        mode = defect_mode_for_channel(channel)
-        code = reason_code(mode)
-        total = float(np.abs(values).sum())
-
-        for rank, index in enumerate(np.argsort(-np.abs(values)), start=1):
-            name = model.feature_columns[index]
-            magnitude = abs(float(values[index]))
-            rows.append(
-                {
-                    "unit_id": decision.unit_id,
-                    "color": decision.color,
-                    "reason_code": code,
-                    "defect_mode": mode,
-                    "worst_channel": channel,
-                    "rank": int(rank),
-                    "feature": name,
-                    "shap_value": float(values[index]),
-                    "feature_value": float(instance[index]),
-                    "weight": magnitude / max(total, _BACKGROUND_FLOOR),
-                }
+        instance = _instance(features, decision.unit_id, model.feature_columns)
+        rows.extend(
+            _explain_unit(
+                explainers[channel], decision, instance, model.feature_columns
             )
+        )
     return pd.DataFrame(rows, columns=EXPLAIN_COLUMNS)
