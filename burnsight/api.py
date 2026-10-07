@@ -21,7 +21,7 @@ from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from burnsight.audit import certificate_pdf, load_audit
+from burnsight.audit import AuditLogError, certificate_pdf, load_audit
 from burnsight.config import BATCH_COLUMNS, DEFAULT_ALPHA, DEFAULT_BETA
 from burnsight.ingest import parse_batch
 from burnsight.pipeline import run_triage
@@ -214,10 +214,16 @@ async def triage_endpoint(
     return run_triage(records, alpha=alpha)
 
 
-@app.get("/api/audit/{audit_id}")
-async def get_audit(audit_id: str) -> dict[str, Any]:
-    """Machine-readable audit record for one analysis run (JSONL lookup)."""
-    record = load_audit(audit_id)
+def _stored_audit(audit_id: str) -> dict:
+    """Load a stored audit record or raise the matching HTTP error.
+
+    A damaged log line is surfaced as an explicit 500 rather than an
+    unhandled crash, so the operator learns which file to repair.
+    """
+    try:
+        record = load_audit(audit_id)
+    except AuditLogError as exc:
+        raise HTTPException(500, _detail("AUDIT_LOG_CORRUPT", str(exc))) from None
     if record is None:
         raise HTTPException(
             404, _detail("AUDIT_NOT_FOUND", f"no audit record {audit_id!r}")
@@ -225,14 +231,16 @@ async def get_audit(audit_id: str) -> dict[str, Any]:
     return record
 
 
+@app.get("/api/audit/{audit_id}")
+async def get_audit(audit_id: str) -> dict[str, Any]:
+    """Machine-readable audit record for one analysis run (JSONL lookup)."""
+    return _stored_audit(audit_id)
+
+
 @app.get("/api/certificate/{audit_id}/{unit_id}")
 async def get_certificate(audit_id: str, unit_id: str) -> Response:
     """PDF certificate for a flagged unit, rendered from the stored log."""
-    record = load_audit(audit_id)
-    if record is None:
-        raise HTTPException(
-            404, _detail("AUDIT_NOT_FOUND", f"no audit record {audit_id!r}")
-        )
+    record = _stored_audit(audit_id)
     try:
         pdf = certificate_pdf(record, unit_id)
     except ValueError as exc:

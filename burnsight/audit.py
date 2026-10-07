@@ -12,6 +12,7 @@ so what a judge downloads provably matches what was logged.
 
 from __future__ import annotations
 
+import fcntl
 import hashlib
 import json
 import os
@@ -46,6 +47,16 @@ def audit_path() -> Path:
     """Where the JSONL log lives — env override keeps tests/demo hermetic."""
     override = os.environ.get(AUDIT_ENV)
     return Path(override) if override else DEFAULT_AUDIT_PATH
+
+
+class AuditLogError(ValueError):
+    """The audit log contains a line that is not valid JSON.
+
+    Raised loudly rather than skipped: silently dropping a damaged record
+    would let a corrupted log masquerade as a complete one, which is the
+    opposite of what an audit trail is for. The message names the file and
+    the offending line so the operator can repair it by hand.
+    """
 
 
 def input_digest(records: list[dict]) -> dict:
@@ -131,25 +142,45 @@ def _explanation_records(explanation: pd.DataFrame) -> list[dict]:
 
 
 def append_audit(record: dict, path: Path | None = None) -> Path:
-    """Append exactly one JSON line. Existing bytes are never modified."""
+    """Append exactly one JSON line under an exclusive file lock.
+
+    Existing bytes are never modified. POSIX only guarantees atomic
+    ``O_APPEND`` writes while a record lands in one ``write`` call, and
+    audit records are tens of kilobytes, so concurrent ``/api/triage``
+    runs would otherwise be free to interleave bytes into each other.
+    The lock is held until the handle closes, which flushes first.
+    """
     target = Path(path) if path is not None else audit_path()
     target.parent.mkdir(parents=True, exist_ok=True)
     with target.open("a", encoding="utf-8") as handle:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
         handle.write(json.dumps(record, sort_keys=True) + "\n")
     return target
 
 
 def load_audit(audit_id: str, path: Path | None = None) -> dict | None:
-    """Look up one record by id; None when the id or the log is missing."""
+    """Look up one record by id; None when the id or the log is missing.
+
+    Raises :class:`AuditLogError` naming file and line when a record
+    cannot be parsed — an unreadable audit entry is never skipped quietly.
+    """
     target = Path(path) if path is not None else audit_path()
     if not target.exists():
         return None
     with target.open(encoding="utf-8") as handle:
-        for line in handle:
-            if line.strip():
+        for number, line in enumerate(handle, start=1):
+            if not line.strip():
+                continue
+            try:
                 candidate = json.loads(line)
-                if candidate.get("audit_id") == audit_id:
-                    return candidate
+            except ValueError as exc:
+                raise AuditLogError(
+                    f"audit log {target} is corrupt at line {number}: "
+                    f"{exc.msg} — repair or truncate the file to restore "
+                    "audit and certificate exports"
+                ) from exc
+            if candidate.get("audit_id") == audit_id:
+                return candidate
     return None
 
 

@@ -20,6 +20,7 @@ from fastapi.testclient import TestClient
 
 from burnsight.audit import (
     AUDIT_ENV,
+    AuditLogError,
     append_audit,
     build_audit_record,
     certificate_lines,
@@ -155,6 +156,103 @@ class TestAppendOnlyJsonl:
         assert load_audit(record["audit_id"], path=path) == record
         assert load_audit("no-such-id", path=path) is None
         assert load_audit("any-id", path=tmp_path / "missing.jsonl") is None
+
+
+class TestAuditLogRobustness:
+    """Issue #8: concurrent appends must serialize, and a damaged line must
+    fail loudly with file + line context instead of an anonymous 500."""
+
+    def test_append_acquires_exclusive_file_lock(self, tmp_path, record, monkeypatch):
+        import fcntl
+
+        calls: list[int] = []
+        real_flock = fcntl.flock
+
+        def spy(fd: int, operation: int) -> None:
+            calls.append(operation)
+            real_flock(fd, operation)
+
+        monkeypatch.setattr(fcntl, "flock", spy)
+        path = tmp_path / "audit.jsonl"
+        append_audit(record, path=path)
+        assert fcntl.LOCK_EX in calls, "append must take a write lock"
+
+    def test_lock_is_released_once_append_returns(self, tmp_path, record):
+        import fcntl
+
+        path = tmp_path / "audit.jsonl"
+        append_audit(record, path=path)
+        with path.open("a", encoding="utf-8") as probe:
+            # Succeeds only when no lock was left behind.
+            fcntl.flock(probe.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            fcntl.flock(probe.fileno(), fcntl.LOCK_UN)
+
+    def test_concurrent_appends_keep_every_line_valid_json(self, tmp_path, record):
+        from concurrent.futures import ThreadPoolExecutor
+
+        path = tmp_path / "audit.jsonl"
+        big = dict(record, payload="x" * 60_000)
+        jobs = [dict(big, audit_id=f"run-{i}") for i in range(24)]
+
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            list(pool.map(lambda item: append_audit(item, path=path), jobs))
+
+        lines = path.read_text(encoding="utf-8").splitlines()
+        assert len(lines) == len(jobs)
+        parsed = [json.loads(line) for line in lines]
+        assert {item["audit_id"] for item in parsed} == {
+            item["audit_id"] for item in jobs
+        }
+        assert all(item["payload"] == "x" * 60_000 for item in parsed)
+
+    def test_blank_lines_between_records_are_ignored(self, tmp_path, record):
+        path = tmp_path / "audit.jsonl"
+        path.write_text(
+            json.dumps(record)
+            + "\n\n\n"
+            + json.dumps(dict(record, audit_id="later"))
+            + "\n",
+            encoding="utf-8",
+        )
+        assert load_audit("later", path=path)["audit_id"] == "later"
+
+    def test_malformed_line_raises_error_naming_file_and_line(self, tmp_path, record):
+        path = tmp_path / "audit.jsonl"
+        first = dict(record, audit_id="first")
+        third = dict(record, audit_id="third")
+        path.write_text(
+            json.dumps(first) + "\n" + '{"audit_id": "truncated\n' + json.dumps(third),
+            encoding="utf-8",
+        )
+        # A hit *before* the damage still resolves.
+        assert load_audit("first", path=path)["audit_id"] == "first"
+        # Scanning past the damage is loud and locates the problem.
+        with pytest.raises(AuditLogError) as excinfo:
+            load_audit("third", path=path)
+        message = str(excinfo.value)
+        assert str(path) in message
+        assert "line 2" in message
+        assert excinfo.value.__cause__ is not None
+
+    def test_api_reports_corrupt_audit_log_as_explicit_500(
+        self, monkeypatch, tmp_path, record
+    ):
+        path = tmp_path / "corrupt.jsonl"
+        path.write_text(
+            json.dumps(record) + "\n" + "not json at all\n", encoding="utf-8"
+        )
+        monkeypatch.setenv(AUDIT_ENV, str(path))
+        response = client.get(f"/api/audit/{record['audit_id']}")
+        # the target record is on line 1, so it is still served
+        assert response.status_code == 200
+
+        later = dict(record, audit_id="after-the-damage")
+        with path.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(later) + "\n")
+        damaged = client.get("/api/audit/after-the-damage")
+        assert damaged.status_code == 500
+        assert damaged.json()["detail"]["error"] == "AUDIT_LOG_CORRUPT"
+        assert str(path) in damaged.json()["detail"]["message"]
 
 
 class TestCertificate:
