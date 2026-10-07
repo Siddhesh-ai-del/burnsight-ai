@@ -6,11 +6,13 @@
 - ``text/csv`` raw CSV body
 
 Rejected batches return machine-readable errors: 400 for client/input
-problems, 415 for unsupported media types, 422 for schema/value failures.
+problems, 413 when the body exceeds ``MAX_BODY_BYTES``, 415 for
+unsupported media types, 422 for schema/value failures.
 """
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -29,6 +31,11 @@ app = FastAPI(title="BurnSight", version="0.0.1")
 
 _FRONTEND = Path(__file__).resolve().parent.parent / "frontend" / "dist"
 
+# Byte budget for any single upload. Bodies are streamed against this cap
+# so an accidental multi-gigabyte file cannot exhaust memory on the
+# single-operator workstation the service is scoped to (issue #3).
+MAX_BODY_BYTES = 50 * 1024 * 1024
+
 _INPUT_ERROR_CODES = {
     "EMPTY_INPUT",
     "INVALID_ENCODING",
@@ -41,11 +48,57 @@ def _detail(code: str, message: str, **extra: Any) -> dict[str, Any]:
     return {"error": code, "message": message, **extra}
 
 
+def _too_large(limit: int) -> HTTPException:
+    return HTTPException(
+        413,
+        _detail(
+            "PAYLOAD_TOO_LARGE",
+            f"request body exceeds the {limit}-byte limit; split the batch "
+            "into smaller files and retry",
+        ),
+    )
+
+
+async def _read_body(request: Request) -> bytes:
+    """Read the whole request body, raising 413 as soon as it exceeds the budget.
+
+    The declared ``Content-Length`` is checked first (cheap reject before
+    a single byte is buffered), then the stream itself is metered so a
+    chunked upload with no declared length cannot slip past the cap.
+    """
+    limit = MAX_BODY_BYTES
+    declared = request.headers.get("content-length", "")
+    if declared.isdigit() and int(declared) > limit:
+        raise _too_large(limit)
+    chunks: list[bytes] = []
+    total = 0
+    async for chunk in request.stream():
+        total += len(chunk)
+        if total > limit:
+            raise _too_large(limit)
+        chunks.append(chunk)
+    return b"".join(chunks)
+
+
+def _replay(request: Request, body: bytes) -> Request:
+    """A fresh ``Request`` over the same scope carrying an already-read body.
+
+    Starlette's form parser consumes the receive channel, so multipart
+    parsing runs against a replay of the bounded bytes instead of the
+    (now spent) original stream.
+    """
+
+    async def receive() -> dict[str, Any]:
+        return {"type": "http.request", "body": body, "more_body": False}
+
+    return Request(request.scope, receive)
+
+
 async def _payload_from_request(request: Request) -> bytes | list:
     """Extract the batch payload from the request, or raise the HTTP error."""
     ctype = (request.headers.get("content-type") or "").split(";")[0].strip().lower()
     if ctype == "multipart/form-data":
-        form = await request.form()
+        form = await _replay(request, await _read_body(request)).form()
         part = form.get("file")
         if not hasattr(part, "read"):
             raise HTTPException(
@@ -53,29 +106,30 @@ async def _payload_from_request(request: Request) -> bytes | list:
                 _detail("MISSING_FILE", "multipart body must contain a 'file' part"),
             )
         return await part.read()
+    if ctype not in ("application/json", "text/csv", "application/octet-stream"):
+        raise HTTPException(
+            415,
+            _detail(
+                "UNSUPPORTED_MEDIA_TYPE",
+                f"content-type '{ctype or 'missing'}' is not supported; "
+                "use multipart/form-data, application/json, or text/csv",
+            ),
+        )
+    body = await _read_body(request)
     if ctype == "application/json":
         try:
-            body = await request.json()
-        except Exception:
+            parsed = json.loads(body)
+        except ValueError:
             raise HTTPException(
                 400, _detail("INVALID_JSON", "request body is not valid JSON")
             ) from None
-        if not isinstance(body, list):
+        if not isinstance(parsed, list):
             raise HTTPException(
                 400,
                 _detail("INVALID_JSON_SHAPE", "expected a JSON array of records"),
             )
-        return body
-    if ctype in ("text/csv", "application/octet-stream"):
-        return await request.body()
-    raise HTTPException(
-        415,
-        _detail(
-            "UNSUPPORTED_MEDIA_TYPE",
-            f"content-type '{ctype or 'missing'}' is not supported; "
-            "use multipart/form-data, application/json, or text/csv",
-        ),
-    )
+        return parsed
+    return body
 
 
 @app.get("/api/health")

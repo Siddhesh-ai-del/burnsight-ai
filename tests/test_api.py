@@ -124,3 +124,68 @@ class TestRejections:
         )
         assert response.status_code == 400
         assert response.json()["detail"]["error"] == "INVALID_JSON"
+
+
+class TestBodySizeLimit:
+    """Issue #3: POST bodies are capped so an oversized upload cannot
+    exhaust memory on the operator's workstation."""
+
+    def test_body_over_limit_rejected_413(self, monkeypatch):
+        from burnsight import api as api_module
+
+        monkeypatch.setattr(api_module, "MAX_BODY_BYTES", 1024)
+        response = client.post(
+            "/api/batch",
+            content=b"unit_id,device_type\n" + b"x" * 4096,
+            headers={"content-type": "text/csv"},
+        )
+        assert response.status_code == 413
+        detail = response.json()["detail"]
+        assert detail["error"] == "PAYLOAD_TOO_LARGE"
+        assert "1024" in detail["message"]
+
+    def test_chunked_body_over_limit_rejected_413_without_content_length(
+        self, monkeypatch
+    ):
+        """No Content-Length header (chunked upload) must still be capped —
+        exercises the streaming budget rather than the header fast path."""
+        from burnsight import api as api_module
+
+        monkeypatch.setattr(api_module, "MAX_BODY_BYTES", 1024)
+
+        def chunks():
+            for _ in range(16):
+                yield b"y" * 512
+
+        response = client.post(
+            "/api/batch",
+            content=chunks(),
+            headers={"content-type": "text/csv"},
+        )
+        # Guard: without a Content-Length the header fast path is skipped,
+        # so a pass here proves the streaming budget is what capped it.
+        assert "content-length" not in response.request.headers
+        assert response.status_code == 413
+        assert response.json()["detail"]["error"] == "PAYLOAD_TOO_LARGE"
+
+    def test_oversized_multipart_upload_rejected_413(self, monkeypatch):
+        from burnsight import api as api_module
+
+        monkeypatch.setattr(api_module, "MAX_BODY_BYTES", 1024)
+        response = client.post(
+            "/api/batch",
+            files={"file": ("big.csv", b"z" * 4096, "text/csv")},
+        )
+        assert response.status_code == 413
+        assert response.json()["detail"]["error"] == "PAYLOAD_TOO_LARGE"
+
+    def test_body_at_limit_still_accepted(self, monkeypatch):
+        from burnsight import api as api_module
+
+        raw = (SAMPLES / "batch_early_96h.csv").read_bytes()
+        monkeypatch.setattr(api_module, "MAX_BODY_BYTES", len(raw))
+        response = client.post(
+            "/api/batch", content=raw, headers={"content-type": "text/csv"}
+        )
+        assert response.status_code == 200
+        assert response.json()["n_units"] == 100
