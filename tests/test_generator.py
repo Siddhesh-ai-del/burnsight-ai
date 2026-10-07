@@ -22,7 +22,12 @@ from burnsight.config import (
     SEVERITY_LEVELS,
     SPEC_LIMITS,
 )
-from burnsight.generator import arrhenius_rate, generate_batch
+from burnsight.generator import (
+    _assign_severity,
+    _plant_targets,
+    arrhenius_rate,
+    generate_batch,
+)
 
 DEFECT_CHANNEL = {mode: channel for mode, (channel, _code) in DEFECT_MODES.items()}
 
@@ -216,3 +221,55 @@ class TestDataQuality:
         for ch in PARAM_CHANNELS:
             assert (df[f"{ch}_0h"] >= 0).all()
             assert (df[f"{ch}_168h"] >= 0).all()
+
+
+class TestImmutability:
+    """Issue #2: intermediates assembled on the way to the batch are never
+    back-patched in place."""
+
+    def test_plant_targets_leaves_benign_drift_untouched(self):
+        rng = np.random.default_rng(0)
+        n_units = 12
+        baseline = np.full((n_units, len(PARAM_CHANNELS)), 100.0)
+        drift = np.full((n_units, len(PARAM_CHANNELS)), 4.0)
+        planted = {"defect": np.array([1, 5]), "borderline": np.array([3, 7, 9])}
+        before = drift.copy()
+
+        planted_drift, mode_names = _plant_targets(rng, baseline, drift, planted)
+
+        assert planted_drift is not drift, "planting must build a copy"
+        assert np.array_equal(drift, before), "benign drift must not be mutated"
+        assert not np.array_equal(planted_drift, before), "targets must be applied"
+        assert len(mode_names) == n_units
+
+    def test_defect_mode_labels_cover_exactly_the_planted_defects(self):
+        rng = np.random.default_rng(0)
+        n_units = 12
+        baseline = np.full((n_units, len(PARAM_CHANNELS)), 100.0)
+        drift = np.full((n_units, len(PARAM_CHANNELS)), 4.0)
+        defect = np.array([2, 6, 10])
+        planted = {"defect": defect, "borderline": np.array([], dtype=int)}
+
+        _plant_drift, mode_names = _plant_targets(rng, baseline, drift, planted)
+
+        assert set(mode_names[defect]) <= set(DEFECT_MODES)
+        assert set(mode_names[np.setdiff1d(np.arange(n_units), defect)]) == {"NONE"}
+
+    def test_assign_severity_labels_every_unit_without_gaps(self):
+        rng = np.random.default_rng(3)
+        n_units = 20
+        severity, planted = _assign_severity(rng, n_units, 6, 5)
+
+        assert len(severity) == n_units
+        assert set(severity) <= set(SEVERITY_LEVELS)
+        assert (severity[planted["defect"]] == "DEFECTIVE").all()
+        assert (severity[planted["borderline"]] == "BORDERLINE").all()
+        assert (
+            severity[
+                np.setdiff1d(
+                    np.arange(n_units),
+                    np.concatenate([planted["defect"], planted["borderline"]]),
+                )
+            ]
+            == "NORMAL"
+        ).all()

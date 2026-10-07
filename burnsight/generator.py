@@ -120,15 +120,26 @@ def _validate(
 def _assign_severity(
     rng: np.random.Generator, n_units: int, defect_count: int, borderline_count: int
 ) -> tuple[np.ndarray, dict[str, np.ndarray]]:
-    """Plant defects first, then borderlines among the remaining units."""
-    severity = np.full(n_units, SEVERITY_LEVELS[0], dtype=object)
+    """Plant defects first, then borderlines among the remaining units.
+
+    The label array is assembled with ``np.where`` rather than back-patched:
+    no array written here is an intermediate for anything else (issue #2).
+    """
     defect_idx = np.sort(rng.choice(n_units, size=defect_count, replace=False))
     remaining = np.setdiff1d(np.arange(n_units), defect_idx, assume_unique=True)
     borderline_idx = np.sort(
         rng.choice(remaining, size=borderline_count, replace=False)
     )
-    severity[defect_idx] = SEVERITY_LEVELS[2]
-    severity[borderline_idx] = SEVERITY_LEVELS[1]
+    units = np.arange(n_units)
+    severity = np.where(
+        np.isin(units, defect_idx),
+        SEVERITY_LEVELS[2],
+        np.where(
+            np.isin(units, borderline_idx),
+            SEVERITY_LEVELS[1],
+            SEVERITY_LEVELS[0],
+        ),
+    )
     return severity, {"defect": defect_idx, "borderline": borderline_idx}
 
 
@@ -162,7 +173,13 @@ def _plant_targets(
     drift: np.ndarray,
     planted: dict[str, np.ndarray],
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Return ``(drift, defect_mode)`` with the planted failure targets applied."""
+    """Return ``(drift, defect_mode)`` with the planted failure targets applied.
+
+    ``drift`` is the benign-drift intermediate: it is copied first, never
+    written through, so nothing assembled earlier is mutated in place
+    (issue #2). ``defect_mode`` is composed from a lookup, not patched.
+    """
+    planted_drift = drift.copy()
     n_units = drift.shape[0]
     modes = list(DEFECT_MODES)
     defect_modes = {
@@ -177,15 +194,15 @@ def _plant_targets(
         j = PARAM_CHANNELS.index(channel)
         _lsl, usl = SPEC_LIMITS[channel]
         target = rng.uniform(*_DEFECT_OVERSHOOT) * usl
-        drift[idx, j] = target - baseline[idx, j]
+        planted_drift[idx, j] = target - baseline[idx, j]
 
     for i, idx in enumerate(planted["borderline"]):
         channel = PARAM_CHANNELS[i % len(PARAM_CHANNELS)]
         j = PARAM_CHANNELS.index(channel)
         lsl, usl = SPEC_LIMITS[channel]
         target = lsl + rng.uniform(*_BORDERLINE_POS) * (usl - lsl)
-        drift[idx, j] = target - baseline[idx, j]
-    return drift, mode_names
+        planted_drift[idx, j] = target - baseline[idx, j]
+    return planted_drift, mode_names
 
 
 def _trajectories(
