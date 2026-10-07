@@ -145,7 +145,7 @@ burnsight-ai/
 
 ## Project status & backlog
 
-The MVP is feature-complete against [PLAN.md](PLAN.md); public APIs may still change before 0.1.0. Known issues are tracked openly as the post-MVP backlog: [#1–#8](https://github.com/Siddhesh-ai-del/burnsight-ai/issues) — mainly function-length refactors (findings from the per-ticket code reviews) plus two robustness items (dashboard innerHTML hardening, audit-log file locking).
+The MVP is feature-complete against [PLAN.md](PLAN.md); public APIs may still change before 0.1.0. The post-MVP review backlog — [#1–#8](https://github.com/Siddhesh-ai-del/burnsight-ai/issues), four function-length refactors and four hardening items — has been fixed, one commit per issue, and closed.
 
 ## Contributing
 

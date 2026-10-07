@@ -249,7 +249,7 @@ drawer (its backdrop *is* `Background`); header/button/thumb need the live
 page backdrop and are material-only — no plan-compliant path to a passing
 surface remained after the animation-freeze control failed.
 
-## Post-MVP backlog (open GitHub issues)
+## Post-MVP backlog (GitHub issues — all closed)
 
 All review findings were logged, not fixed in-sprint (CRITICAL-only fix rule;
 0 CRITICAL was found at any ticket):
@@ -267,3 +267,27 @@ All review findings were logged, not fixed in-sprint (CRITICAL-only fix rule;
 
 The four length findings (#1/#4/#5/#7) are one refactor pass: extract the
 shared helpers each function repeats.
+
+### Resolution (2026-10-07)
+
+All eight findings were fixed after the sprint, one commit per issue, each
+commented and closed. Test count went 182 → 200 (18 new tests: five for the
+`unit_id` charset, four for the body cap, six for audit-log robustness,
+three for generator immutability), coverage holds at 99% with `api.py`,
+`audit.py`, `triage.py`, `explain.py`, `generator.py` and `schema.py` at
+100%, and no function in `burnsight/` exceeds the 50-line standard.
+
+| # | Commit | Change |
+|---|---|---|
+| [#1](https://github.com/Siddhesh-ai-del/burnsight-ai/issues/1) | `6fbe856` | `generate_batch` 62 → 29 lines (`_lane_temperatures`, `_sample_population`, `_plant_targets`, `_trajectories`) |
+| [#2](https://github.com/Siddhesh-ai-del/burnsight-ai/issues/2) | `79b50ac` | severity via `np.where`, drift copied before planting, defect mode from a lookup |
+| [#3](https://github.com/Siddhesh-ai-del/burnsight-ai/issues/3) | `ad07e45` | 50 MB streaming body cap → 413 `PAYLOAD_TOO_LARGE`, on batch/screen/triage |
+| [#4](https://github.com/Siddhesh-ai-del/burnsight-ai/issues/4) | `03323fa` | `triage_batch` 88 → 25 lines (evidence split from `_decide_unit`) |
+| [#5](https://github.com/Siddhesh-ai-del/burnsight-ai/issues/5) | `c56ae18` | `explain_batch` 58 → 34 lines (`_explain_unit`, `_instance`) |
+| [#6](https://github.com/Siddhesh-ai-del/burnsight-ai/issues/6) | `ef24478` | `unit_id` charset `^[A-Za-z0-9_.-]+$` at ingest (the `innerHTML` sink was already gone after the React rewrite) |
+| [#7](https://github.com/Siddhesh-ai-del/burnsight-ai/issues/7) | `244c700` | `certificate_lines` 57 → 19 lines (verdict / features / provenance) |
+| [#8](https://github.com/Siddhesh-ai-del/burnsight-ai/issues/8) | `8f2b7f7` | `fcntl.LOCK_EX` on append; `AuditLogError` names file + line; API returns `500 AUDIT_LOG_CORRUPT` |
+
+Generator output hashes were verified byte-identical before and after the
+`generate_batch` refactor, and the certificate text assertions confirm the
+rendered strings did not move.
