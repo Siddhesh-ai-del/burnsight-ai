@@ -184,24 +184,17 @@ def load_audit(audit_id: str, path: Path | None = None) -> dict | None:
     return None
 
 
-def certificate_lines(record: dict, unit_id: str) -> list[str]:
-    """Plain-text certificate content — the testable source of truth.
-
-    Raises ValueError for units without a flagged decision (no certificate
-    for Green units: nothing was certified against a suspicion).
-    """
-    decision = next((d for d in record["decisions"] if d["unit_id"] == unit_id), None)
-    explanation = next(
-        (e for e in record["explanations"] if e["unit_id"] == unit_id), None
-    )
-    if decision is None or explanation is None:
-        raise ValueError(
-            f"unit {unit_id!r} has no flagged decision in audit {record['audit_id']}"
-        )
+def _certificate_verdict(
+    record: dict,
+    unit_id: str,
+    decision: dict,
+    explanation: dict,
+) -> list[str]:
+    """Header, verdict, driver channel, and the model/policy block."""
     lsl, usl = SPEC_LIMITS[explanation["worst_channel"]]
     policy = record["policy"]
     model = record["model"]
-    lines = [
+    return [
         "BurnSight AI - Burn-In Screening Certificate",
         "=" * 54,
         f"Unit:             {unit_id}",
@@ -224,14 +217,22 @@ def certificate_lines(record: dict, unit_id: str) -> list[str]:
         "",
         "Top explanations (SHAP)",
     ]
-    for index, feature in enumerate(
-        explanation["features"][:CERTIFICATE_FEATURES], start=1
-    ):
-        lines.append(
-            f"{index}. {feature['feature']:<28} {feature['shap_value']:+10.2f}"
-            f"  weight {feature['weight']:.1%}"
+
+
+def _certificate_features(explanation: dict) -> list[str]:
+    """The ranked SHAP attributions that follow the verdict block."""
+    return [
+        f"{index}. {feature['feature']:<28} {feature['shap_value']:+10.2f}"
+        f"  weight {feature['weight']:.1%}"
+        for index, feature in enumerate(
+            explanation["features"][:CERTIFICATE_FEATURES], start=1
         )
-    lines += [
+    ]
+
+
+def _certificate_provenance(record: dict) -> list[str]:
+    """Digest, audit id, timestamp, and the issuance footer."""
+    return [
         "",
         f"Input digest:     sha256:{record['input_digest']['value']}",
         f"Audit id:         {record['audit_id']}",
@@ -240,7 +241,27 @@ def certificate_lines(record: dict, unit_id: str) -> list[str]:
         "Issued by BurnSight MVP (SIH 2026 PS 26170) from a synthetic Arrhenius lot.",
         "Machine-readable provenance: JSONL audit log entry with this audit id.",
     ]
-    return lines
+
+
+def certificate_lines(record: dict, unit_id: str) -> list[str]:
+    """Plain-text certificate content — the tested source of truth.
+
+    Raises ValueError for units without a flagged decision (no certificate
+    for Green units: nothing was certified against a suspicion).
+    """
+    decision = next((d for d in record["decisions"] if d["unit_id"] == unit_id), None)
+    explanation = next(
+        (e for e in record["explanations"] if e["unit_id"] == unit_id), None
+    )
+    if decision is None or explanation is None:
+        raise ValueError(
+            f"unit {unit_id!r} has no flagged decision in audit {record['audit_id']}"
+        )
+    return (
+        _certificate_verdict(record, unit_id, decision, explanation)
+        + _certificate_features(explanation)
+        + _certificate_provenance(record)
+    )
 
 
 def certificate_pdf(record: dict, unit_id: str) -> bytes:
